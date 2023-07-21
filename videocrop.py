@@ -8,10 +8,12 @@ def main():
 def play_video(fp:str):
     video = cv2.VideoCapture(fp)
     fps = video.get(cv2.CAP_PROP_FPS)
-    success, video_image = video.read()
+    success, frame = video.read()
 
-    window = pygame.display.set_mode(video_image.shape[1::-1],pygame.RESIZABLE)
+    window = pygame.display.set_mode(frame.shape[1::-1],pygame.RESIZABLE)
     clock = pygame.time.Clock()
+
+    paused = False
 
     run = success
     while run:
@@ -26,34 +28,44 @@ def play_video(fp:str):
                 
                 #handle resize
                 case pygame.VIDEORESIZE:
-                    copy = pygame.display.get_surface()
-                    window = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE)
-                
+                    window = pygame.display.set_mode((event.w,event.h),pygame.RESIZABLE) #resize display
+                    
+                    frame = cv2.resize(frame,window.get_size()) #resize displayed frame (compress this into a function as is shared code to every frame update)
+                    video_surf = pygame.image.frombuffer(frame.tobytes(),frame.shape[1::-1],"BGR")
+                    window.blit(video_surf,(0,0))
+                    pygame.display.flip()
+
                 #handle keypress
                 case pygame.KEYDOWN:
 
                     #quit on escape key press (for dev testing purposes)
                     if event.key == pygame.K_ESCAPE:
                         run = False
+                    
+                    #toggle pause video
+                    if event.key == pygame.K_SPACE:
+                        paused = not paused
+
                 
 
-        #read next frame
-        success,frame = video.read()
+        if not paused:
+            #read next frame
+            success,frame = video.read()
 
-        if success:
-            #resize frame to fit display
-            frame = cv2.resize(frame,window.get_size())
+            if success:
+                #resize frame to fit display
+                frame = cv2.resize(frame,window.get_size())
 
-            video_surf = pygame.image.frombuffer(
-                frame.tobytes(),frame.shape[1::-1],"BGR"
-            )
-        else:
-            #no more frames left to read.
-            run = False
-        
-        #write frame to window
-        window.blit(video_surf,(0,0))
-        pygame.display.flip()
+                video_surf = pygame.image.frombuffer(
+                    frame.tobytes(),frame.shape[1::-1],"BGR"
+                )
+            else:
+                #no more frames left to read.
+                run = False
+            
+            #write frame to window
+            window.blit(video_surf,(0,0))
+            pygame.display.flip()
 
 
 
