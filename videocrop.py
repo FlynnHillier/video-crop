@@ -1,8 +1,10 @@
 import pygame
 import cv2
+from CropOverlay import CropOverlay
 
 def main():
     v = VideoCrop("sample.mp4")
+    v.start()
 
 
 class VideoCrop:
@@ -15,10 +17,15 @@ class VideoCrop:
         self.v_dimensions_width = int(self.video.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.v_dimensions_height = int(self.video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.v_fps = self.video.get(cv2.CAP_PROP_FPS)
+        
         self.current_frame = None
 
         self.clock = pygame.time.Clock()
         self.window = pygame.display.set_mode(self.get_dimensions(),pygame.RESIZABLE)
+
+        self.video_surface = pygame.Surface(self.get_dimensions()) #resize this in future to not fill whole window (if add playback bar for example)
+
+        self.crop_overlay = CropOverlay(self.get_dimensions(),(100,100),10)
 
         self.shown = False
         self.paused = False
@@ -96,8 +103,7 @@ class VideoCrop:
         self.current_frame = frame
 
         #write frame to window
-        self.window.blit(frame_surface,(0,0))
-        pygame.display.flip()
+        self.video_surface.blit(frame_surface,(0,0))
 
 
     #resizes window and frame displayed
@@ -129,14 +135,33 @@ class VideoCrop:
 
             #handle keypress
             case pygame.KEYDOWN:
+                self._handle_event_key_down(event)
 
-                #quit on escape key press (for dev testing purposes)
-                if event.key == pygame.K_ESCAPE:
-                    self.quit()
+
+            ## MOUSE ##
+
+            case pygame.MOUSEBUTTONDOWN:
+                self._handle_event_mouse_down(event)
                 
-                #toggle pause video
-                if event.key == pygame.K_SPACE:
-                    self.toggle_pause()
+    
+    def _handle_event_key_down(self,event) -> None:
+        match event.key:
+            #quit on escape key press (for dev testing purposes)
+            case pygame.K_ESCAPE:
+                self.quit()
+            
+            #toggle pause video
+            case pygame.K_SPACE:
+                self.toggle_pause()
+
+
+    def _handle_event_mouse_down(self,event) -> None:
+        match event.button:
+            case 1: #LMB
+                self.crop_overlay.move_selection_area((100,100))
+
+
+
 
 
     ### LOOP ###
@@ -144,7 +169,7 @@ class VideoCrop:
     #loop pygame to handle events and render new frames on tick
     def _start_event_loop(self) -> None:
         clock = pygame.time.Clock()
-        
+
         while self.running:
             clock.tick(self.v_fps)
             
@@ -162,7 +187,11 @@ class VideoCrop:
                 else:
                     #no more frames left to read.
                     self.quit()
-
+            
+            self.window.blit(self.video_surface,(0,0))
+            self.window.blit(self.crop_overlay.get_surface(),(0,0))
+            
+            pygame.display.flip()
 
 if __name__ == "__main__":
     main()
