@@ -25,6 +25,11 @@ class VideoCrop:
         self.thread = None
         self.running = True
 
+
+
+    ### USER-EXPOSED INTERACTION METHODS ###
+
+
     #hide window (not tested)
     def hide(self) -> None:
         pygame.display.set_mode((100,100),flags=pygame.HIDDEN)
@@ -34,10 +39,6 @@ class VideoCrop:
     def show(self) -> None:
         pygame.display.set_mode(self.get_dimensions(),pygame.RESIZABLE)
         self.shown = True
-    
-    #get dimensions
-    def get_dimensions(self) -> tuple[int,int]:
-        return (self.v_dimensions_width,self.v_dimensions_height)
     
     #pause video playback
     def pause(self) -> None:
@@ -61,10 +62,24 @@ class VideoCrop:
     def quit(self) -> None:
         self.running = False
 
+
+
+    ### UTILITY METHODS ###
+
+
     #resize frame to fit fit window
     def resize_frame_to_window_dimensions(self,frame): #-> frame
         return cv2.resize(frame,self.get_dimensions())
     
+    #get dimensions
+    def get_dimensions(self) -> tuple[int,int]:
+        return (self.v_dimensions_width,self.v_dimensions_height)
+    
+    
+    
+    ### VIDEO DISPLAY ###
+
+
     #fetch next frame from video
     def next_frame(self) -> tuple[bool,any]:
         success,frame = self.video.read()
@@ -99,7 +114,9 @@ class VideoCrop:
         self.display_frame(frame)
 
 
-    #event handler
+
+    ### EVENTS ###
+
     def _handle_event(self,event) -> None:
         match event.type:
             #handle user quit window
@@ -122,6 +139,7 @@ class VideoCrop:
                     self.toggle_pause()
 
 
+    ### LOOP ###
 
     #loop pygame to handle events and render new frames on tick
     def _start_event_loop(self) -> None:
