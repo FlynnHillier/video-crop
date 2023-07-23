@@ -46,11 +46,15 @@ class CropOverlay:
     def move_selection_area(self,pos:tuple[int,int]):
         self.handle_rect.left = pos[0]
         self.handle_rect.top = pos[1]
+        self.combine_rects()
 
-        self.body_rect.top = pos[1] + self.handle_width
-        self.body_rect.left = pos[0] + self.handle_width
 
-    
+    #ensure body rect is contained centrally within handle rect
+    def combine_rects(self):
+        self.body_rect.top = self.handle_rect.top + self.handle_width
+        self.body_rect.left = self.handle_rect.left + self.handle_width
+
+
     #generate the position the rectangle should be placed at, factoring in the initial offset, based on the passed pos (typically passed pos will be mouse_pos)
     def _generate_pos_factoring_drag_offset(self,pos:tuple[int,int]) -> tuple[int,int]:
         return ( pos[0] + self.drag_offset_x , pos[1] + self.drag_offset_y )
@@ -71,11 +75,28 @@ class CropOverlay:
             pos_x,pos_y = pos
             self.drag_offset_x = self.handle_rect.left - pos_x
             self.drag_offset_y = self.handle_rect.top - pos_y
+        
+        if self.is_handle_collide(pos):
+            self.is_resizing = True
 
     #to run on mouse motion event
-    def on_mouse_motion(self,pos):
+    def on_mouse_motion(self,event):
         if self.is_moving:
-            self.move_selection_area(self._generate_pos_factoring_drag_offset(pos))
+            self.move_selection_area(self._generate_pos_factoring_drag_offset(event.pos))
+        
+        if self.is_resizing:
+            #calculate wether user is resizing from the left/right & top/bottom
+            is_right_side_select =(event.pos[0] - self.handle_rect.left) - ( self.handle_rect.w  / 2) > 0
+            is_top_side_select = (event.pos[1] - self.handle_rect.top) - ( self.handle_rect.h  / 2) > 0
+
+            #get change relative to which direction the user is moving relative to the edges of the rectangle
+            change_x = event.rel[0] if is_right_side_select else event.rel[0] * -1
+            change_y = event.rel[1] if is_top_side_select else event.rel[1] * -1
+
+            #inflate by scale factor 2 of change to ensure border of rectangle tracks mouse.
+            self.handle_rect.inflate_ip(change_x * 2,change_y * 2)
+            self.body_rect.inflate_ip(change_x * 2,change_y * 2)
+
 
     #to run on lmb up event
     def on_lmb_up(self):
@@ -83,3 +104,6 @@ class CropOverlay:
             self.is_moving = False
             self.drag_offset_x = 0
             self.drag_offset_y = 0
+        
+        if self.is_resizing:
+            self.is_resizing = False

@@ -145,7 +145,7 @@ class VideoCrop:
             case pygame.MOUSEBUTTONUP:
                 self._handle_event_mouse_up(event)
             case pygame.MOUSEMOTION:
-                self.crop_overlay.on_mouse_motion(event.pos)
+                self.crop_overlay.on_mouse_motion(event)
                 
     
     def _handle_event_key_down(self,event) -> None:
