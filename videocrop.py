@@ -27,10 +27,11 @@ class VideoCrop:
 
         self.crop_overlay = CropOverlay(
             bg_dimensions=self.get_dimensions(),
-            initial_rect_dimensions=(100,100),
+            initial_rect_dimensions=(90,160),
             handle_width=5,
             max_selection=(500,500),
-            min_selection=(50,50)
+            min_selection=(50,50),
+            aspect_ratio=9/16
         )
 
         self.shown = False

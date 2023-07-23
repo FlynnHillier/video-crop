@@ -7,7 +7,10 @@ class CropOverlay:
             handle_width:int,
             max_selection:tuple[int,int], #max selection rect x y area
             min_selection:tuple[int,int],
+            aspect_ratio:float | None = None, #if aspect ratio is passed, ensure initial dimensions are within said aspect ratio
         ):
+        self.aspect_ratio = aspect_ratio
+        
         self.handle_width = handle_width
 
         self.bg_w = bg_dimensions[0]
@@ -98,18 +101,25 @@ class CropOverlay:
             change_x = event.rel[0] if is_right_side_select else event.rel[0] * -1
             change_y = event.rel[1] if is_top_side_select else event.rel[1] * -1
 
+            
+            min_w = 10#self.min_selection[0]
+            max_w = 2000#self.max_selection[0]
 
-            min_w = self.min_selection[0]
-            max_w = self.max_selection[0]
-
-            min_h = self.min_selection[1]
-            max_h = self.max_selection[1]
+            min_h = 10 #self.min_selection[1]
+            max_h = 2000#self.max_selection[1]
             #inflate by scale factor 2 of change to ensure border of rectangle tracks mouse.
             w = self.handle_rect.w
             h = self.handle_rect.h
             
             inflate_by_x = 0
             inflate_by_y = 0
+
+            if self.aspect_ratio != None:
+                #manipulate change to maintain aspect ratio, respect the most influential change (either x or y) relative to their weight within the aspect ratio.
+                if abs(int(change_x * self.aspect_ratio)) >= abs(change_y): #respect x change, manipulate y based on x movement
+                    change_y = round(change_x * (1/self.aspect_ratio))
+                else: #respect y change, manipulate x based on y movement
+                    change_x = round(change_y * self.aspect_ratio)
 
             #inflate width
             if (change_x > 0 and w + (change_x * 2) <= max_w) or (change_x < 0 and w + (change_x*2) >= min_w): #check that inflating by the given change_x would not exceed/subceed the max/min value for the width
@@ -120,15 +130,15 @@ class CropOverlay:
                 inflate_by_x = min_w - self.handle_rect.w
             
             #inflate height
-            if (change_y > 0 and h + (change_y * 2) <= max_h) or (change_y < 0 and h + (change_y*2) >= min_h): #check that inflating by the given change_x would not exceed/subceed the max/min value for the width
+            if (change_y > 0 and h + (change_y * 2) <= max_h) or (change_y < 0 and h + (change_y*2) >= min_h): #check that inflating by the given change_y would not exceed/subceed the max/min value for the height
                 inflate_by_y = change_y * 2
-            elif (change_y > 0 and h < max_h): #if not yet reached maximum width, but mouse movement relative would result in exceeding maximum, set width to maximum.
+            elif (change_y > 0 and h < max_h): #if not yet reached maximum height, but mouse movement relative would result in exceeding maximum, set height to maximum.
                 inflate_by_y = max_h - self.handle_rect.h
-            elif (change_y < 0 and h > min_h): #if not yet reached minimum width, but mouse movement relative would result in subceeding minimum, set width to minimum.
+            elif (change_y < 0 and h > min_h): #if not yet reached minimum height, but mouse movement relative would result in subceeding minimum, set height to minimum.
                 inflate_by_y = min_h - self.handle_rect.h
 
 
-            
+
             self.handle_rect.inflate_ip(inflate_by_x,0)
             self.body_rect.inflate_ip(inflate_by_x,0)
 
