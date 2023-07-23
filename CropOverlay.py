@@ -5,23 +5,28 @@ class CropOverlay:
             bg_dimensions:tuple[int,int],
             initial_rect_dimensions:tuple[int,int],
             handle_width:int,
+            max_selection:tuple[int,int], #max selection rect x y area
+            min_selection:tuple[int,int],
         ):
         self.handle_width = handle_width
 
         self.bg_w = bg_dimensions[0]
         self.bg_h = bg_dimensions[1]
 
-        self.rect_handle_w = initial_rect_dimensions[0]
-        self.rect_handle_h = initial_rect_dimensions[1]
+        self.max_selection = max_selection
+        self.min_selection = min_selection
 
-        self.rect_body_w = initial_rect_dimensions[0] - (2 * handle_width)
-        self.rect_body_h = initial_rect_dimensions[1] - (2 * handle_width)
+        initial_rect_handle_w = initial_rect_dimensions[0]
+        initial_rect_handle_h = initial_rect_dimensions[1]
 
-        initial_rect_left = int((self.bg_w  - self.rect_handle_w) / 2)
-        initial_rect_top = int((self.bg_h  - self.rect_handle_h) / 2)
+        initial_rect_body_w = initial_rect_dimensions[0] - (2 * handle_width)
+        initial_rect_body_h = initial_rect_dimensions[1] - (2 * handle_width)
 
-        self.handle_rect = pygame.Rect(initial_rect_left,initial_rect_top,self.rect_handle_w,self.rect_handle_h)
-        self.body_rect = pygame.Rect(initial_rect_left + self.handle_width,initial_rect_top + self.handle_width,self.rect_body_w,self.rect_body_h)
+        initial_rect_left = int((self.bg_w  - initial_rect_handle_w) / 2)
+        initial_rect_top = int((self.bg_h  - initial_rect_handle_h) / 2)
+
+        self.handle_rect = pygame.Rect(initial_rect_left,initial_rect_top,initial_rect_handle_w,initial_rect_handle_h)
+        self.body_rect = pygame.Rect(initial_rect_left + self.handle_width,initial_rect_top + self.handle_width,initial_rect_body_w,initial_rect_body_h)
 
         self.surface = pygame.Surface((self.bg_w,self.bg_h),pygame.SRCALPHA,32) #transparent surface
         
@@ -93,9 +98,43 @@ class CropOverlay:
             change_x = event.rel[0] if is_right_side_select else event.rel[0] * -1
             change_y = event.rel[1] if is_top_side_select else event.rel[1] * -1
 
+
+            min_w = self.min_selection[0]
+            max_w = self.max_selection[0]
+
+            min_h = self.min_selection[1]
+            max_h = self.max_selection[1]
             #inflate by scale factor 2 of change to ensure border of rectangle tracks mouse.
-            self.handle_rect.inflate_ip(change_x * 2,change_y * 2)
-            self.body_rect.inflate_ip(change_x * 2,change_y * 2)
+            w = self.handle_rect.w
+            h = self.handle_rect.h
+            
+            inflate_by_x = 0
+            inflate_by_y = 0
+
+            #inflate width
+            if (change_x > 0 and w + (change_x * 2) <= max_w) or (change_x < 0 and w + (change_x*2) >= min_w): #check that inflating by the given change_x would not exceed/subceed the max/min value for the width
+                inflate_by_x = change_x * 2
+            elif (change_x > 0 and w < max_w): #if not yet reached maximum width, but mouse movement relative would result in exceeding maximum, set width to maximum.
+                inflate_by_x = max_w - self.handle_rect.w
+            elif (change_x < 0 and w > min_w): #if not yet reached minimum width, but mouse movement relative would result in subceeding minimum, set width to minimum.
+                inflate_by_x = min_w - self.handle_rect.w
+            
+            #inflate height
+            if (change_y > 0 and h + (change_y * 2) <= max_h) or (change_y < 0 and h + (change_y*2) >= min_h): #check that inflating by the given change_x would not exceed/subceed the max/min value for the width
+                inflate_by_y = change_y * 2
+            elif (change_y > 0 and h < max_h): #if not yet reached maximum width, but mouse movement relative would result in exceeding maximum, set width to maximum.
+                inflate_by_y = max_h - self.handle_rect.h
+            elif (change_y < 0 and h > min_h): #if not yet reached minimum width, but mouse movement relative would result in subceeding minimum, set width to minimum.
+                inflate_by_y = min_h - self.handle_rect.h
+
+
+            
+            self.handle_rect.inflate_ip(inflate_by_x,0)
+            self.body_rect.inflate_ip(inflate_by_x,0)
+
+            self.handle_rect.inflate_ip(0,inflate_by_y)
+            self.body_rect.inflate_ip(0,inflate_by_y)
+
 
 
     #to run on lmb up event

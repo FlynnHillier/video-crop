@@ -25,7 +25,13 @@ class VideoCrop:
 
         self.video_surface = pygame.Surface(self.get_dimensions()) #resize this in future to not fill whole window (if add playback bar for example)
 
-        self.crop_overlay = CropOverlay(self.get_dimensions(),(100,100),5)
+        self.crop_overlay = CropOverlay(
+            bg_dimensions=self.get_dimensions(),
+            initial_rect_dimensions=(100,100),
+            handle_width=5,
+            max_selection=(500,500),
+            min_selection=(50,50)
+        )
 
         self.shown = False
         self.paused = False
