@@ -102,11 +102,11 @@ class CropOverlay:
             change_y = event.rel[1] if is_top_side_select else event.rel[1] * -1
 
             
-            min_w = 10#self.min_selection[0]
-            max_w = 2000#self.max_selection[0]
+            min_w = self.min_selection[0]
+            max_w = self.max_selection[0]
 
-            min_h = 10 #self.min_selection[1]
-            max_h = 2000#self.max_selection[1]
+            min_h = self.min_selection[1]
+            max_h = self.max_selection[1]
             #inflate by scale factor 2 of change to ensure border of rectangle tracks mouse.
             w = self.handle_rect.w
             h = self.handle_rect.h
