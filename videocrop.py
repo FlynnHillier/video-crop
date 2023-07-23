@@ -25,7 +25,7 @@ class VideoCrop:
 
         self.video_surface = pygame.Surface(self.get_dimensions()) #resize this in future to not fill whole window (if add playback bar for example)
 
-        self.crop_overlay = CropOverlay(self.get_dimensions(),(100,100),10)
+        self.crop_overlay = CropOverlay(self.get_dimensions(),(100,100),5)
 
         self.shown = False
         self.paused = False
@@ -142,6 +142,10 @@ class VideoCrop:
 
             case pygame.MOUSEBUTTONDOWN:
                 self._handle_event_mouse_down(event)
+            case pygame.MOUSEBUTTONUP:
+                self._handle_event_mouse_up(event)
+            case pygame.MOUSEMOTION:
+                self.crop_overlay.on_mouse_motion(event.pos)
                 
     
     def _handle_event_key_down(self,event) -> None:
@@ -158,7 +162,15 @@ class VideoCrop:
     def _handle_event_mouse_down(self,event) -> None:
         match event.button:
             case 1: #LMB
-                self.crop_overlay.move_selection_area((100,100))
+                mouse_pos = pygame.mouse.get_pos()
+                self.crop_overlay.on_lmb_down(mouse_pos)
+
+    def _handle_event_mouse_up(self,event) -> None:
+        match event.button:
+            case 1: #LMB
+                self.crop_overlay.on_lmb_up()
+            
+            
 
 
 
