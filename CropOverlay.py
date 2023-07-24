@@ -8,8 +8,12 @@ class CropOverlay:
             max_selection:tuple[int,int], #max selection rect x y area
             min_selection:tuple[int,int],
             aspect_ratio:float | None = None, #if aspect ratio is passed, ensure initial dimensions are within said aspect ratio
+            bg_alpha:int = 128, #how dark the not selected area of the video should be, 0-255
         ):
         self.aspect_ratio = aspect_ratio
+
+        self.bg_alpha = bg_alpha
+
         
         self.handle_width = handle_width
 
@@ -41,9 +45,9 @@ class CropOverlay:
 
     #draw rectangles to surface
     def update(self):
-        self.surface.fill((255,255,255,0)) #erase previous rects
-        pygame.draw.rect(self.surface,(255,0,0),self.handle_rect)
-        pygame.draw.rect(self.surface,(0,255,0),self.body_rect)
+        self.surface.fill((0,0,0,self.bg_alpha)) #erase previous rects
+        pygame.draw.rect(self.surface,(255,255,255,255),self.handle_rect,width=self.handle_width)
+        pygame.draw.rect(self.surface,(0,0,0,0),self.body_rect)
 
     #update and return the surface
     def get_surface(self):
@@ -144,8 +148,6 @@ class CropOverlay:
 
             self.handle_rect.inflate_ip(0,inflate_by_y)
             self.body_rect.inflate_ip(0,inflate_by_y)
-
-
 
     #to run on lmb up event
     def on_lmb_up(self):
