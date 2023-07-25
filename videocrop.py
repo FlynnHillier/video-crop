@@ -21,12 +21,12 @@ class VideoCrop:
         self.current_frame = None
 
         self.clock = pygame.time.Clock()
-        self.window = pygame.display.set_mode(self.get_dimensions(),pygame.RESIZABLE)
+        self.window = pygame.display.set_mode(self.get_video_dimensions(),pygame.RESIZABLE)
 
-        self.video_surface = pygame.Surface(self.get_dimensions()) #resize this in future to not fill whole window (if add playback bar for example)
+        self.video_surface = pygame.Surface(self.get_video_dimensions()) #resize this in future to not fill whole window (if add playback bar for example)
 
         self.crop_overlay = CropOverlay(
-            bg_dimensions=self.get_dimensions(),
+            bg_dimensions=self.get_video_dimensions(),
             initial_rect_dimensions=(90,160),
             handle_width=5,
             max_selection=(608,1080),
@@ -51,7 +51,7 @@ class VideoCrop:
     
     #show window (not tested)
     def show(self) -> None:
-        pygame.display.set_mode(self.get_dimensions(),pygame.RESIZABLE)
+        pygame.display.set_mode((self.v_dimensions_width,self.v_dimensions_height),pygame.RESIZABLE)
         self.shown = True
     
     #pause video playback
@@ -83,10 +83,10 @@ class VideoCrop:
 
     #resize frame to fit fit window
     def resize_frame_to_window_dimensions(self,frame): #-> frame
-        return cv2.resize(frame,self.get_dimensions())
+        return cv2.resize(frame,(self.video_surface.get_width(),self.video_surface.get_height()))
     
     #get dimensions
-    def get_dimensions(self) -> tuple[int,int]:
+    def get_video_dimensions(self) -> tuple[int,int]:
         return (self.v_dimensions_width,self.v_dimensions_height)
     
     
@@ -115,14 +115,11 @@ class VideoCrop:
 
     #resizes window and frame displayed
     def resize_window(self,xy:tuple[int,int]):
-        width,height = xy
-        
-        self.v_dimensions_width = width
-        self.v_dimensions_height = height
-
-        self.window = pygame.display.set_mode(self.get_dimensions(),pygame.RESIZABLE)
+        self.window = pygame.display.set_mode(xy,pygame.RESIZABLE)
 
         self.crop_overlay.resize(xy)
+        self.video_surface = pygame.Surface(xy)
+
 
 
         #redisplay current frame onto new surface
@@ -131,6 +128,26 @@ class VideoCrop:
 
 
     ### VIDEO WRITE ###
+
+    # crop the video 
+    def crop_area_selection(self):
+        #retrieve selection
+        selection = self.crop_overlay.get_selection()
+
+        height_multi = self.v_dimensions_height / self.crop_overlay.get_surface().get_height()
+        width_multi = self.v_dimensions_width / self.crop_overlay.get_surface().get_width()
+
+        #adjust selection (given in window size dimensions) to be relative to real frame size (account for window resize)
+        x1 = round(selection[0][0] * width_multi)
+        x2 = round(selection[0][1] * width_multi)
+
+        h1 = round(selection[1][0] * height_multi)
+        h2 = round(selection[1][1] * height_multi)
+
+        self.video_crop((x1,x2),(h1,h2))
+
+
+
 
     def video_crop(self,x_range:tuple[int,int],y_range:tuple[int,int]):
         #cropped frame size
@@ -200,9 +217,8 @@ class VideoCrop:
 
             #save video
             case pygame.K_RETURN:
-                selection = self.crop_overlay.get_selection()
-                self.video_crop(selection[0],selection[1])
-
+                self.crop_area_selection()
+                
     def _handle_event_mouse_down(self,event) -> None:
         match event.button:
             case 1: #LMB
