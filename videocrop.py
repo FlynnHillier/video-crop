@@ -1,6 +1,7 @@
 import pygame
 import cv2
 from CropOverlay import CropOverlay
+from VideoPlayer import VideoPlayer
 
 def main():
     v = VideoCrop("sample.mp4")
@@ -14,17 +15,16 @@ class VideoCrop:
         if self.video.isOpened() == False:
             raise Exception(f"video '{fp}' could not be opened.")
 
+        #video metadata
         self.v_dimensions_width = int(self.video.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.v_dimensions_height = int(self.video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.v_fps = self.video.get(cv2.CAP_PROP_FPS)
-        
-        self.current_frame = None
 
+        #display
         self.clock = pygame.time.Clock()
         self.window = pygame.display.set_mode(self.get_video_dimensions(),pygame.RESIZABLE)
 
-        self.video_surface = pygame.Surface(self.get_video_dimensions()) #resize this in future to not fill whole window (if add playback bar for example)
-
+        #crop overlay
         self.crop_overlay = CropOverlay(
             bg_dimensions=self.get_video_dimensions(),
             initial_rect_dimensions=(90,160),
@@ -34,9 +34,14 @@ class VideoCrop:
             aspect_ratio=9/16
         )
 
+        #video player
+        self.video_player = VideoPlayer(
+            dimensions=self.get_video_dimensions(),
+            video=self.video
+        )
+
+        #display variables
         self.shown = False
-        self.paused = False
-        self.thread = None
         self.running = True
 
 
@@ -54,19 +59,6 @@ class VideoCrop:
         pygame.display.set_mode((self.v_dimensions_width,self.v_dimensions_height),pygame.RESIZABLE)
         self.shown = True
     
-    #pause video playback
-    def pause(self) -> None:
-        self.paused = True
-    
-    #unpause video playback
-    def unpause(self) -> None:
-        self.paused = False
-    
-    #toggle pause
-    def toggle_pause(self) -> bool:
-        self.paused = not self.paused
-        return self.paused
-    
     #start
     def start(self) -> None:
         self.show()
@@ -76,55 +68,21 @@ class VideoCrop:
     def quit(self) -> None:
         self.running = False
 
-
-
-    ### UTILITY METHODS ###
-
-
-    #resize frame to fit fit window
-    def resize_frame_to_window_dimensions(self,frame): #-> frame
-        return cv2.resize(frame,(self.video_surface.get_width(),self.video_surface.get_height()))
-    
-    #get dimensions
-    def get_video_dimensions(self) -> tuple[int,int]:
-        return (self.v_dimensions_width,self.v_dimensions_height)
-    
-    
-    
-    ### VIDEO DISPLAY ###
-
-
-    #fetch next frame from video
-    def next_frame(self) -> tuple[bool,any]:
-        success,frame = self.video.read()
-        if success:
-            frame = self.resize_frame_to_window_dimensions(frame) #resize frame to fit window dimensions
-            return True,frame
-        else:
-            return False,None
-    
-    #display frame in window
-    def display_frame(self,frame) -> None:
-        frame_surface = pygame.image.frombuffer(frame.tobytes(),frame.shape[1::-1],"BGR")
-
-        self.current_frame = frame
-
-        #write frame to window
-        self.video_surface.blit(frame_surface,(0,0))
-
-
     #resizes window and frame displayed
     def resize_window(self,xy:tuple[int,int]):
         self.window = pygame.display.set_mode(xy,pygame.RESIZABLE)
 
         self.crop_overlay.resize(xy)
-        self.video_surface = pygame.Surface(xy)
+        self.video_player.resize(xy)
 
 
 
-        #redisplay current frame onto new surface
-        frame = self.resize_frame_to_window_dimensions(self.current_frame)
-        self.display_frame(frame)
+    ### UTILITY METHODS ###
+    
+    #get dimensions
+    def get_video_dimensions(self) -> tuple[int,int]:
+        return (self.v_dimensions_width,self.v_dimensions_height)
+
 
 
     ### VIDEO WRITE ###
@@ -145,9 +103,6 @@ class VideoCrop:
         h2 = round(selection[1][1] * height_multi)
 
         self.video_crop((x1,x2),(h1,h2))
-
-
-
 
     def video_crop(self,x_range:tuple[int,int],y_range:tuple[int,int]):
         #cropped frame size
@@ -174,7 +129,6 @@ class VideoCrop:
                 cap.release()
         
         out.release()
-
 
 
 
@@ -213,7 +167,7 @@ class VideoCrop:
             
             #toggle pause video
             case pygame.K_SPACE:
-                self.toggle_pause()
+                self.video_player.toggle_pause()
 
             #save video
             case pygame.K_RETURN:
@@ -229,9 +183,6 @@ class VideoCrop:
         match event.button:
             case 1: #LMB
                 self.crop_overlay.on_lmb_up()
-            
-            
-
 
 
 
@@ -250,17 +201,9 @@ class VideoCrop:
                 self._handle_event(event)
 
 
-            if not self.paused:
-                #read next frame
-                success,frame = self.next_frame()
-
-                if success:
-                    self.display_frame(frame)
-                else:
-                    #no more frames left to read.
-                    self.quit()
+            self.video_player.tick()
             
-            self.window.blit(self.video_surface,(0,0))
+            self.window.blit(self.video_player.surface,(0,0))
             self.window.blit(self.crop_overlay.get_surface(),(0,0))
             
             pygame.display.flip()
