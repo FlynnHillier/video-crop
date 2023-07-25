@@ -14,7 +14,6 @@ class CropOverlay:
 
         self.bg_alpha = bg_alpha
 
-        
         self.handle_width = handle_width
 
         bg_w = bg_dimensions[0]
@@ -42,6 +41,10 @@ class CropOverlay:
 
         self.is_moving = False
         self.is_resizing = False
+
+        self.is_hovering_handle = False
+        self.is_hovering_body = False
+
 
     #draw rectangles to surface
     def update(self):
@@ -93,6 +96,64 @@ class CropOverlay:
 
     #to run on mouse motion event
     def on_mouse_motion(self,event):
+        
+        ### handle cursor image change
+        original_cursor = pygame.mouse.get_cursor()
+        new_cursor = None
+        
+        use_defualt_cursor_on_no_other_changes = False #false because we want to maintain current cursor if it is being dictated by another portion of the program
+
+        #check if ended hovering body
+        if self.is_hovering_body and not self.is_body_collide(event.pos):
+            self.is_hovering_body = False
+            use_defualt_cursor_on_no_other_changes = True
+        #check if started hovering body
+        elif not self.is_hovering_body and self.is_body_collide(event.pos):
+            self.is_hovering_body = True
+            new_cursor = pygame.SYSTEM_CURSOR_SIZEALL
+        
+        #check if ended hovering handle
+        if self.is_hovering_handle and not self.is_handle_collide(event.pos):
+            self.is_hovering_handle = False
+            use_defualt_cursor_on_no_other_changes = True
+        #check if started hovering handle
+        elif not self.is_hovering_handle and self.is_handle_collide(event.pos):
+            self.is_hovering_handle = True
+
+        if new_cursor != None and new_cursor != original_cursor:
+            pygame.mouse.set_cursor(new_cursor)
+        elif use_defualt_cursor_on_no_other_changes:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
+        #select correct cursor image based on position within handle (this can change so is done on every move if hovering)
+        if self.is_hovering_handle:
+            
+            #get position of mouse relative to the position of the area rect
+            pos_x_relative_to_handle = event.pos[0] - self.handle_rect.left
+            pos_y_relative_to_handle = event.pos[1] - self.handle_rect.top
+
+            is_top_handle = pos_y_relative_to_handle <= self.handle_width
+            is_bot_handle = pos_y_relative_to_handle >= self.handle_rect.h - self.handle_width
+
+            is_left_handle = pos_x_relative_to_handle <= self.handle_width
+            is_right_handle = pos_x_relative_to_handle >= self.handle_rect.w - self.handle_width
+
+            cursor = None
+
+            if (is_top_handle and is_left_handle) or (is_bot_handle and is_right_handle): #NWSE
+                cursor = pygame.SYSTEM_CURSOR_SIZENWSE
+            elif (is_top_handle and is_right_handle) or (is_bot_handle and is_left_handle): #NESW
+                cursor = pygame.SYSTEM_CURSOR_SIZENESW
+            elif is_left_handle or is_right_handle:
+                cursor = pygame.SYSTEM_CURSOR_SIZEWE
+            elif is_top_handle or is_bot_handle:
+                 cursor = pygame.SYSTEM_CURSOR_SIZENS
+
+            if cursor != None:
+                pygame.mouse.set_cursor(cursor)
+        ###
+        
+        
         if self.is_moving:
             self.move_selection_area(self._generate_pos_factoring_drag_offset(event.pos))
         
