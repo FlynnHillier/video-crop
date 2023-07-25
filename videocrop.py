@@ -29,7 +29,7 @@ class VideoCrop:
             bg_dimensions=self.get_dimensions(),
             initial_rect_dimensions=(90,160),
             handle_width=5,
-            max_selection=(500,500),
+            max_selection=(608,1080),
             min_selection=(50,50),
             aspect_ratio=9/16
         )
@@ -127,6 +127,36 @@ class VideoCrop:
         self.display_frame(frame)
 
 
+    ### VIDEO WRITE ###
+
+    def video_crop(self,x_range:tuple[int,int],y_range:tuple[int,int]):
+        #cropped frame size
+        frame_w = x_range[1] - x_range[0]
+        frame_h = y_range[1] - y_range[0]
+
+        #codec
+        fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+        
+        #video writer constructor
+        out = cv2.VideoWriter("out.mp4",fourcc,self.v_fps,(frame_w,frame_h)) 
+
+        #read from new videocapture
+        cap = cv2.VideoCapture("sample.mp4")
+
+        #read each frame of video
+        while cap.isOpened():
+            success,frame = cap.read()
+
+            if success:
+                cropped_frame = frame[ y_range[0]:y_range[1], x_range[0]:x_range[1] ] #write colum first and width after? seems to work.
+                out.write(cropped_frame)
+            else:
+                cap.release()
+        
+        out.release()
+
+
+
 
     ### EVENTS ###
 
@@ -165,6 +195,10 @@ class VideoCrop:
             case pygame.K_SPACE:
                 self.toggle_pause()
 
+            #save video
+            case pygame.K_RETURN:
+                selection = self.crop_overlay.get_selection()
+                self.video_crop(selection[0],selection[1])
 
     def _handle_event_mouse_down(self,event) -> None:
         match event.button:

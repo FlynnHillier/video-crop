@@ -158,3 +158,8 @@ class CropOverlay:
         
         if self.is_resizing:
             self.is_resizing = False
+
+    
+    def get_selection(self):
+        return ( (self.body_rect.left , self.body_rect.left + self.body_rect.w) , (self.body_rect.top , self.body_rect.top + self.body_rect.h))
+
