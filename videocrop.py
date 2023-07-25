@@ -122,6 +122,9 @@ class VideoCrop:
 
         self.window = pygame.display.set_mode(self.get_dimensions(),pygame.RESIZABLE)
 
+        self.crop_overlay.resize(xy)
+
+
         #redisplay current frame onto new surface
         frame = self.resize_frame_to_window_dimensions(self.current_frame)
         self.display_frame(frame)

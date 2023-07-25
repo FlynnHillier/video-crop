@@ -17,8 +17,8 @@ class CropOverlay:
         
         self.handle_width = handle_width
 
-        self.bg_w = bg_dimensions[0]
-        self.bg_h = bg_dimensions[1]
+        bg_w = bg_dimensions[0]
+        bg_h = bg_dimensions[1]
 
         self.max_selection = max_selection
         self.min_selection = min_selection
@@ -29,13 +29,13 @@ class CropOverlay:
         initial_rect_body_w = initial_rect_dimensions[0] - (2 * handle_width)
         initial_rect_body_h = initial_rect_dimensions[1] - (2 * handle_width)
 
-        initial_rect_left = int((self.bg_w  - initial_rect_handle_w) / 2)
-        initial_rect_top = int((self.bg_h  - initial_rect_handle_h) / 2)
+        initial_rect_left = int((bg_w  - initial_rect_handle_w) / 2)
+        initial_rect_top = int((bg_h  - initial_rect_handle_h) / 2)
 
         self.handle_rect = pygame.Rect(initial_rect_left,initial_rect_top,initial_rect_handle_w,initial_rect_handle_h)
         self.body_rect = pygame.Rect(initial_rect_left + self.handle_width,initial_rect_top + self.handle_width,initial_rect_body_w,initial_rect_body_h)
 
-        self.surface = pygame.Surface((self.bg_w,self.bg_h),pygame.SRCALPHA,32) #transparent surface
+        self.surface = pygame.Surface((bg_w,bg_h),pygame.SRCALPHA,32) #transparent surface
         
         self.drag_offset_x = 0 #how much to offset position based on mouse location on selection
         self.drag_offset_y = 0 #how much to offset position based on mouse location on selection
@@ -122,7 +122,7 @@ class CropOverlay:
                 #manipulate change to maintain aspect ratio, respect the most influential change (either x or y) relative to their weight within the aspect ratio.
                 if abs(int(change_x * self.aspect_ratio)) >= abs(change_y): #respect x change, manipulate y based on x movement
                     change_y = round(change_x * (1/self.aspect_ratio))
-                else: #respect y change, manipulate x based on y movement
+                else: #respect y change, manipulate x based on y movemjlkent
                     change_x = round(change_y * self.aspect_ratio)
 
             #inflate width
@@ -162,4 +162,20 @@ class CropOverlay:
     
     def get_selection(self):
         return ( (self.body_rect.left , self.body_rect.left + self.body_rect.w) , (self.body_rect.top , self.body_rect.top + self.body_rect.h))
+    
+    def resize(self,xy:tuple[int,int]):
+        previous_w = self.surface.get_width()
+        previous_h = self.surface.get_height()
+
+        #get relative height / width based on viewport
+        y_percentage = self.handle_rect.top / previous_h
+        x_percentage = self.handle_rect.left / previous_w
+
+        self.surface = pygame.Surface(xy,pygame.SRCALPHA,32)
+
+        #set relative height based on new viewport
+        self.handle_rect.top = round(y_percentage * xy[1])
+        self.handle_rect.left = round(x_percentage * xy[0])
+
+        self.combine_rects()
 
