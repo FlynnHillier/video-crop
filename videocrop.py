@@ -2,6 +2,7 @@ import pygame
 import cv2
 from CropOverlay import CropOverlay
 from VideoPlayer import VideoPlayer
+from PlayBar import PlayBar
 
 def main():
     v = VideoCrop("sample.mp4")
@@ -20,13 +21,17 @@ class VideoCrop:
         self.v_dimensions_height = int(self.video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.v_fps = self.video.get(cv2.CAP_PROP_FPS)
 
+        #display proportions
+        self.display_video_coverage_h = 0.9 #the amount of screen in the y-direction to be covered by the video
+        self.display_play_bar_coverage_h = 0.1 #the amount of screen in the y-direction to be covered by the play bar
+
         #display
         self.clock = pygame.time.Clock()
         self.window = pygame.display.set_mode(self.get_video_dimensions(),pygame.RESIZABLE)
 
         #crop overlay
         self.crop_overlay = CropOverlay(
-            bg_dimensions=self.get_video_dimensions(),
+            bg_dimensions=(self.gen_dimensions_video_surface()),
             initial_rect_dimensions=(90,160),
             handle_width=5,
             max_selection=(608,1080),
@@ -36,8 +41,14 @@ class VideoCrop:
 
         #video player
         self.video_player = VideoPlayer(
-            dimensions=self.get_video_dimensions(),
+            dimensions=(self.gen_dimensions_video_surface()),
             video=self.video
+        )
+
+        self.play_bar = PlayBar(
+            dimensions=self.gen_dimensions_playbar_surface(),
+            fps=self.v_fps,
+            frame_count=self.video.get(cv2.CAP_PROP_FRAME_COUNT)
         )
 
         #display variables
@@ -61,7 +72,6 @@ class VideoCrop:
     
     #start
     def start(self) -> None:
-        self.show()
         self._start_event_loop()
 
     #quit
@@ -72,8 +82,10 @@ class VideoCrop:
     def resize_window(self,xy:tuple[int,int]):
         self.window = pygame.display.set_mode(xy,pygame.RESIZABLE)
 
-        self.crop_overlay.resize(xy)
-        self.video_player.resize(xy)
+        self.crop_overlay.resize(self.gen_dimensions_video_surface())
+        self.video_player.resize(self.gen_dimensions_video_surface())
+
+        self.play_bar.resize(self.gen_dimensions_playbar_surface())
 
 
 
@@ -82,6 +94,13 @@ class VideoCrop:
     #get dimensions
     def get_video_dimensions(self) -> tuple[int,int]:
         return (self.v_dimensions_width,self.v_dimensions_height)
+    
+    #generate video surface display dimensions based on window size
+    def gen_dimensions_video_surface(self) -> tuple[int,int]:
+        return (self.window.get_width(),self.window.get_height() * self.display_video_coverage_h)
+    
+    def gen_dimensions_playbar_surface(self) -> tuple[int,int]:
+        return (self.window.get_width(),self.window.get_height() * self.display_play_bar_coverage_h)
 
 
 
