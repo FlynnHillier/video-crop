@@ -4,6 +4,22 @@
 #ADD ON_BIND METHOD TO ROW/COLUM ASWELL AS ON_UNBIND WHICH ADDS ELEMENT TO SELF.ELEMENTS[], (THIS IS A CIRCULAR REFERENCE)
 
 
+class Span:
+    def __init__(self,start:int,end:int | None = None, spread:int | None = None):
+        self.start = start
+        
+        if end != None:
+            self.end = end
+        elif spread != None:
+            self.end = self.start + spread
+        else:
+            raise ValueError("Span must have atleast one of the keyword arguments 'end' or 'spread' defined.")
+
+    def does_contain(self,index:int) -> bool:
+        return index >= self.start and index <= self.end
+
+
+
 
 #handles relative sizing
 class Percentage:
@@ -45,30 +61,31 @@ def _get_absolute(v:Percentage | int,parent_dimension_value:int,container_dimens
         return int(v.get(parent_dimension_value=parent_dimension_value,container_dimension_value=container_dimension_value))
     
 
+#hold parent dimensions in a shared object
+class Parent:
+    def __init__(self,width:int,height:int):
+        self.width:int = width
+        self.height:int = height
+
+
 #handles element verticality
 class Row:
     def __init__(self,
         height:int | Percentage,
-        parent_height:int,
+        parent:Parent,
     ):
         self._height = height
-        self.parent_height = parent_height
+        self.parent = parent
 
 
         if self._height.relative_to_container == True:
             raise ValueError(f"row cannot be passed percentage that is relative to container. Only percentage relative to parent.")
 
-    def get_parent_height(self) -> int:
-        return self.parent_height
-
     def get_height(self):
         return _get_absolute(v=self._height,
-                             parent_dimension_value=self.parent_height,
+                             parent_dimension_value=self.parent.height,
                              container_dimension_value=0,
                             )
-    
-    def on_parent_resize(self,parent_height:int):
-        self.parent_height = parent_height
     
     def get_left_pos_in_row(self,element_x):
         #This should be used if element choose to not respect colums and instead position relative to previous elements in row
@@ -82,20 +99,17 @@ class Row:
 class Column:
     def __init__(self,
         width:int | Percentage, 
-        parent_width:int,
+        parent:Parent,
     ):
         self._width = width
-        self.parent_width = parent_width
+        self.parent = parent
 
         if self._width.relative_to_container == True:
             raise ValueError(f"column cannot be passed percentage that is relative to container. Only percentage relative to parent.")
 
-    def get_parent_width(self) -> int:
-        return self.parent_width
-
     def get_width(self) -> int:
         return _get_absolute(v=self._width,
-                                parent_dimension_value=self.parent_width,
+                                parent_dimension_value=self.parent.width,
                                 container_dimension_value=0,
                             )
     
@@ -109,21 +123,38 @@ class Column:
 class Element:
     def __init__(self,
         id:str,
-        order:tuple[int,int], #where the element should lie on the x-axis & y-axis with respect to other elements
+        order:tuple[int | Span, int | Span], #where the element should lie on the x-axis & y-axis with respect to other elements
         width:Percentage | int, 
         height:Percentage | int,
         margin:dict[str,Percentage | int] | None = None, #right,left,top,bottom
         center:bool = True, #if true will ignore margins and auto center in colum/row
     ):
         self.id = id
-        self.order = order
         self._width = width
         self._height = height
+
+        #format self._order to a tuple[Span,Span] factoring in that arguments may also be passed as an int
+        self._order : tuple[Span,Span] = (None,None)
+        if type(order[0]) == Span:
+            column_span = order[0]
+        elif type(order[0]) == int:
+            column_span = Span(order[0],spread=0)
+
+        if type(order[1]) == Span:
+            row_span = order[1]
+        elif type(order[1]) == int:
+            row_span = Span(order[1],spread=0)
+
+        self._order = (column_span,row_span)
+        
+        
         
         #row and column provide references to anchor values such as parent_width and row_height, used for percentage calculations
-        self.row : Row | None = None
-        self.column : Column | None = None
-        
+        self.rows : list[Row] = []
+        self.columns : list[Column] = []
+        self.parent : Parent | None = None
+
+
         self.center = center
 
         #define margin based on margin values
@@ -142,83 +173,107 @@ class Element:
 
     ## binds
     def _bind_to_colum(self,column:Column) -> None:
-        self.column = column
+        self.columns.append(column)
     
 
     def _bind_to_row(self,row:Row) -> None:
-        self.row = row
+        self.rows.append(row)
+
+    def _bind_to_parent(self,parent:Parent) -> None:
+        self.parent = parent
+
+
+    #get cumulative container dimensions (accomodates percentage calculation across mutliple rows/columns )
+    
+    def _get_cumulative_row_height(self) -> int:
+        total = 0
+        for row in self.rows:
+            total += row.get_height()
+
+        return total
+    
+
+    def _get_cumulative_column_width(self) -> int:
+        total = 0
+        for column in self.columns:
+            total += column.get_width()
+        
+        return total
+
 
     
     ## get margins
 
     def get_margin_right(self):
+        self._ensure_has_bound_parent()
         self._ensure_has_bound_column()
         return _get_absolute(self.margin_right,
-                                    parent_dimension_value=self.column.get_parent_width(),
-                                    container_dimension_value=self.column.get_width(),
+                                    parent_dimension_value=self.parent.width,
+                                    container_dimension_value=self._get_cumulative_column_width(),
                                 )
     
     def get_margin_left(self):
+        self._ensure_has_bound_parent()
         self._ensure_has_bound_column()
         return _get_absolute(self.margin_left,
-                                    parent_dimension_value=self.column.get_parent_width(),
-                                    container_dimension_value=self.column.get_width(),
+                                    parent_dimension_value=self.parent.width,
+                                    container_dimension_value=self._get_cumulative_column_width(),
                                 )
     
     def get_margin_top(self):
+        self._ensure_has_bound_parent()
         self._ensure_has_bound_row()
         return _get_absolute(self.margin_top,
-                                    parent_dimension_value=self.row.get_parent_height(),
-                                    container_dimension_value=self.row.get_height(),
+                                    parent_dimension_value=self.parent.height,
+                                    container_dimension_value=self._get_cumulative_row_height(),
                                 )
     
     def get_margin_bottom(self):
+        self._ensure_has_bound_parent()
         self._ensure_has_bound_row()
         return _get_absolute(self.margin_bottom,
-                                    parent_dimension_value=self.row.get_parent_height(),
-                                    container_dimension_value=self.row.get_height(),
+                                    parent_dimension_value=self.parent.height,
+                                    container_dimension_value=self._get_cumulative_row_height(),
                                 )
-
-
-    ## get orders
     
-    def get_order_x(self) -> int:
-        return self.order[0]
-    
-    def get_order_y(self) -> int:
-        return self.order[1]
-    
-
     ## get dimensions
 
     def get_width(self):
+        self._ensure_has_bound_parent()
         self._ensure_has_bound_column()
         return _get_absolute(self._width,
-                                  parent_dimension_value=self.column.get_parent_width(),
-                                  container_dimension_value=self.column.get_width()
+                                  parent_dimension_value=self.parent.width,
+                                  container_dimension_value=self._get_cumulative_column_width(),
                                 )
         
     def get_height(self):
+        self._ensure_has_bound_parent()
         self._ensure_has_bound_row()
         return _get_absolute(self._height,
-                                  parent_dimension_value=self.row.get_parent_height(),
-                                  container_dimension_value=self.row.get_height(),
+                                  parent_dimension_value=self.parent.height,
+                                  container_dimension_value=self._get_cumulative_row_height(),
                                 )
     
     ### WATERFALL HAS OCCURED ASSURANCE ###
     def _ensure_has_bound_column(self) -> None:
-        if type(self.column) != Column:
-            raise Exception("waterfall process has not yet been carried out, element must be bound to a column before its properties can be accessed.")
+        if len(self.columns) <= 0:
+            raise Exception("element must be bound to atleast one column")
         
     def _ensure_has_bound_row(self) -> None:
-        if type(self.row) != Row:
-            raise Exception("waterfall process has not yet been carried out, element must be bound to a row before its properties can be accessed.")
+        if len(self.rows) <= 0:
+            raise Exception("element must be bound to atleast one row")
+        
+    def _ensure_has_bound_parent(self) -> None:
+        if type(self.parent) != Parent:
+            raise Exception("waterfall process has not yet been carried out, element must be bound to a parent before its properties can be accessed.")
 
         
 
 # pass all previously constructed 'Element' classes to 'Formatter' class in array.
 # Then on resize call Formatter.resize_parent
 # Then update each element, using Formatter.get_dimensions and Formatter.get_position
+
+
 
 class Formatter:
     def __init__(self,
@@ -228,22 +283,26 @@ class Formatter:
         elements:list[Element],             
     ):
         #define constructor arguments
-        self.parent_width = parent_dimensions[0]
-        self.parent_height = parent_dimensions[1]
+        self.parent = Parent(*parent_dimensions)
         self.elements = elements
 
         # add check for coordinate collisions?
 
+        #bind parent object to each element
+        for element in self.elements:
+            element._bind_to_parent(self.parent)
+
+        
         #build rows (vertical positioning)
         self.rows : list[Row] = []
         for row_index,row_height in enumerate(rows):
             #filter elements to only those that reside in the target row
-            child_elements = list(filter(lambda element: element.order[1] == row_index ,self.elements))
+            child_elements = list(filter(lambda element: element._order[1].does_contain(row_index) ,self.elements))
 
             #build row
             row = Row(
                     height=row_height,
-                    parent_height=self.parent_height,
+                    parent=self.parent,
                     #elements=child_elements,
                 )
 
@@ -259,12 +318,12 @@ class Formatter:
         self.columns : list[Column] = []
         for column_index,column_width in enumerate(columns):
             #filter elements to only those that reside in the target column
-            child_elements = list(filter(lambda element: element.order[1] == column_index ,self.elements))
+            child_elements = list(filter(lambda element: element._order[0].does_contain(column_index) ,self.elements))
 
             #build column
             column = Column(
                     width=column_width,
-                    parent_width=self.parent_width,
+                    parent=self.parent,
                     #elements=self.elements,
                 )
             
@@ -295,11 +354,11 @@ class Formatter:
         hasChanged = False
         
         if width != None:
-            self.parent_width = width
+            self.parent.width = width
             hasChanged = True
         
         if height != None:
-            self.parent_height = height
+            self.parent.height = height
             hasChanged = True
 
         if hasChanged:
@@ -310,11 +369,7 @@ class Formatter:
 
     #triggers waterfall effect, updating reliant children
     def _update_on_resize(self):
-        for row in self.rows:
-            row.on_parent_resize(self.parent_height)
-        
-        for column in self.columns:
-            column.on_parent_resize(self.parent_width)
+        pass
 
 
     
@@ -331,21 +386,23 @@ class Formatter:
     
     #gen position (<left>,<top>)
     def _get_element_position(self,element:Element) -> tuple[int,int]:      
-        column_index = element.order[0]
-        row_index = element.order[1]
+        column_start = element._order[0].start
+        column_end = element._order[0].end
+        
+        row_start = element._order[1].start
+        row_end = element._order[1].end
 
         ## TOP
         top = 0
 
         #get all previous rows
-        for row in self.rows[:row_index]:
+        for row in self.rows[:row_start]:
             top += row.get_height()
         
 
-        target_row = self.rows[row_index]
         if element.center:
             #calculate remaining space in row and divide space by two in order to center (should work even for overflow?)
-            remaining_space_in_row_y = target_row.get_height() - element.get_height()
+            remaining_space_in_row_y = element._get_cumulative_row_height() - element.get_height()
             top += round(remaining_space_in_row_y / 2)
         else:
             ## CURRENTLY MARGIN TOP MAY ALLOW FOR ELEMENT TO SPILL OVER TO NEXT ROW
@@ -356,13 +413,12 @@ class Formatter:
         left = 0
 
         #all previous columns
-        for column in self.columns[:column_index]:
+        for column in self.columns[:column_start]:
             left += column.get_width()
         
-        target_column = self.columns[column_index]
         if element.center:
             #calculate remaining space in column and divide space by two in order to center
-            remaining_space_in_column_x = target_column.get_width() - element.get_width()
+            remaining_space_in_column_x = element._get_cumulative_column_width() - element.get_width()
             left += round(remaining_space_in_column_x / 2)
         else:
             ## CURRENTLY MARGIN LEFT MAY ALLOW FOR ELEMENT TO SPILL OVER TO NEXT COLUMN
