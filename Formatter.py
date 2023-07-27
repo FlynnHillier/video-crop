@@ -1,8 +1,7 @@
-#TODO
-# GIVE ABILITY FOR ELEMENTS TO SPAN MULTIPLE COLUMS / ROWS
-#IMPLEMENT SOMETHING THAT WILL STOP/WARN IF PERCENTAGES EXCEED MAXIMUM HEIGHT/WIDTH OF ROW/COLUMN
-#ADD ON_BIND METHOD TO ROW/COLUM ASWELL AS ON_UNBIND WHICH ADDS ELEMENT TO SELF.ELEMENTS[], (THIS IS A CIRCULAR REFERENCE)
 
+
+
+### UTILITY CLASSES ###
 
 class Span:
     def __init__(self,start:int,end:int | None = None, spread:int | None = None):
@@ -18,7 +17,10 @@ class Span:
     def does_contain(self,index:int) -> bool:
         return index >= self.start and index <= self.end
 
-
+#used with width/height calculations, will times the value of the other by the multiplier and use that value. e.g width=AspectMulti(1.2) -> height * 1.2
+class AspectMultiplier:
+    def __init__(self,multiplier:float):
+        self.multiplier = multiplier 
 
 
 #handles relative sizing
@@ -52,7 +54,16 @@ class Percentage:
             return organic_val
         
 
-#UTILITY FUNCTION
+#hold parent dimensions in a shared object
+class Parent:
+    def __init__(self,width:int,height:int):
+        self.width:int = width
+        self.height:int = height
+
+        
+
+## UTILITY FUNCTIONS ##
+
 #choose correct value, allow for usage of absolute values aswell as implict percentage values
 def _get_absolute(v:Percentage | int,parent_dimension_value:int,container_dimension_value:int) -> int:
     if type(v) == int:
@@ -61,12 +72,8 @@ def _get_absolute(v:Percentage | int,parent_dimension_value:int,container_dimens
         return int(v.get(parent_dimension_value=parent_dimension_value,container_dimension_value=container_dimension_value))
     
 
-#hold parent dimensions in a shared object
-class Parent:
-    def __init__(self,width:int,height:int):
-        self.width:int = width
-        self.height:int = height
 
+### CONTAINERS ###
 
 #handles element verticality
 class Row:
@@ -119,19 +126,26 @@ class Column:
 
 
 
+### ELEMENT ###
+
 #represents an entry to the Formatter class
 class Element:
     def __init__(self,
         id:str,
         order:tuple[int | Span, int | Span], #where the element should lie on the x-axis & y-axis with respect to other elements
-        width:Percentage | int, 
-        height:Percentage | int,
+        width:Percentage | int | AspectMultiplier, 
+        height:Percentage | int | AspectMultiplier,
         margin:dict[str,Percentage | int] | None = None, #right,left,top,bottom
         center:bool = True, #if true will ignore margins and auto center in colum/row
     ):
         self.id = id
         self._width = width
         self._height = height
+
+        #check for invalid configuratio of width and height.
+        if type(self._width) == AspectMultiplier and type(self._height) == AspectMultiplier:
+            raise ValueError("cannot have both width & height values as an AspectMultiplier.")
+
 
         #format self._order to a tuple[Span,Span] factoring in that arguments may also be passed as an int
         self._order : tuple[Span,Span] = (None,None)
@@ -251,12 +265,21 @@ class Element:
     ## get dimensions
 
     def get_width(self):
+
+        #if width is an apect multiplier, return width relative to height and defined multiplier
+        if type(self._width) == AspectMultiplier:
+            return self._width.multiplier * self.get_height()
+
         return _get_absolute(self._width,
                                   parent_dimension_value=self.get_parent_height(),
                                   container_dimension_value=self._get_cumulative_column_width(),
                                 )
         
     def get_height(self):
+        #if height is an apect multiplier, return height relative to width and defined multiplier
+        if type(self._height) == AspectMultiplier:
+            return self._height.multiplier * self.get_width()
+
         return _get_absolute(self._height,
                                   parent_dimension_value=self.get_parent_height(),
                                   container_dimension_value=self._get_cumulative_row_height(),
@@ -277,10 +300,12 @@ class Element:
 
         
 
+### FORMATTER ###
+
+
 # pass all previously constructed 'Element' classes to 'Formatter' class in array.
 # Then on resize call Formatter.resize_parent
 # Then update each element, using Formatter.get_dimensions and Formatter.get_position
-
 
 
 class Formatter:
