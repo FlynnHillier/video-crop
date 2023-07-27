@@ -159,15 +159,15 @@ class Element:
 
         #define margin based on margin values
         if margin != None:
-            self.margin_right = margin["right"] if "right" in margin else 0
-            self.margin_left = margin["left"] if "left" in margin else 0
-            self.margin_top = margin["top"] if "top" in margin else 0
-            self.margin_bottom = margin["bottom"] if "buttom" in margin else 0
+            self.margin_right = margin["right"] if "right" in margin else None
+            self.margin_left = margin["left"] if "left" in margin else None
+            self.margin_top = margin["top"] if "top" in margin else None
+            self.margin_bottom = margin["bottom"] if "bottom" in margin else None
         else:
-            self.margin_right = 0
-            self.margin_bottom = 0
-            self.margin_left = 0
-            self.margin_top = 0
+            self.margin_right = None
+            self.margin_bottom = None
+            self.margin_left = None
+            self.margin_top = None
     
     
 
@@ -200,57 +200,65 @@ class Element:
         
         return total
 
+    def get_parent_width(self) -> int:
+        self._ensure_has_bound_parent()
+        return self.parent.width
+    
+    def get_parent_height(self) -> int:
+        self._ensure_has_bound_parent()
+        return self.parent.height
+
 
     
     ## get margins
 
-    def get_margin_right(self):
-        self._ensure_has_bound_parent()
-        self._ensure_has_bound_column()
+    def get_margin_right(self) -> int:
+        if self.margin_left == None:
+            return 0
+
         return _get_absolute(self.margin_right,
-                                    parent_dimension_value=self.parent.width,
+                                    parent_dimension_value=self.get_parent_width(),
                                     container_dimension_value=self._get_cumulative_column_width(),
                                 )
     
-    def get_margin_left(self):
-        self._ensure_has_bound_parent()
-        self._ensure_has_bound_column()
+    def get_margin_left(self) -> int:
+        if self.margin_left == None:
+            return 0
+
         return _get_absolute(self.margin_left,
-                                    parent_dimension_value=self.parent.width,
+                                    parent_dimension_value=self.get_parent_width(),
                                     container_dimension_value=self._get_cumulative_column_width(),
                                 )
     
-    def get_margin_top(self):
-        self._ensure_has_bound_parent()
-        self._ensure_has_bound_row()
+    def get_margin_top(self) -> int:
+        if self.margin_top == None:
+            return 0
+
         return _get_absolute(self.margin_top,
-                                    parent_dimension_value=self.parent.height,
+                                    parent_dimension_value=self.get_parent_height(),
                                     container_dimension_value=self._get_cumulative_row_height(),
                                 )
     
-    def get_margin_bottom(self):
-        self._ensure_has_bound_parent()
-        self._ensure_has_bound_row()
+    def get_margin_bottom(self) -> int:
+        if self.margin_bottom == None:
+            return 0
+
         return _get_absolute(self.margin_bottom,
-                                    parent_dimension_value=self.parent.height,
+                                    parent_dimension_value=self.get_parent_height(),
                                     container_dimension_value=self._get_cumulative_row_height(),
                                 )
     
     ## get dimensions
 
     def get_width(self):
-        self._ensure_has_bound_parent()
-        self._ensure_has_bound_column()
         return _get_absolute(self._width,
-                                  parent_dimension_value=self.parent.width,
+                                  parent_dimension_value=self.get_parent_height(),
                                   container_dimension_value=self._get_cumulative_column_width(),
                                 )
         
     def get_height(self):
-        self._ensure_has_bound_parent()
-        self._ensure_has_bound_row()
         return _get_absolute(self._height,
-                                  parent_dimension_value=self.parent.height,
+                                  parent_dimension_value=self.get_parent_height(),
                                   container_dimension_value=self._get_cumulative_row_height(),
                                 )
     
@@ -400,13 +408,19 @@ class Formatter:
             top += row.get_height()
         
 
-        if element.center:
+        if element.center and element.margin_bottom == None and element.margin_top == None: #center vertically
             #calculate remaining space in row and divide space by two in order to center (should work even for overflow?)
             remaining_space_in_row_y = element._get_cumulative_row_height() - element.get_height()
             top += round(remaining_space_in_row_y / 2)
-        else:
-            ## CURRENTLY MARGIN TOP MAY ALLOW FOR ELEMENT TO SPILL OVER TO NEXT ROW
+        
+        elif element.margin_top != None: #repsect margin top
             top += element.get_margin_top()
+
+        elif element.margin_bottom != None: #respect margin bottom
+            top += element._get_cumulative_row_height()
+            top -= element.get_margin_bottom()
+            top -= element.get_height()
+
 
 
         ## LEFT
@@ -416,13 +430,18 @@ class Formatter:
         for column in self.columns[:column_start]:
             left += column.get_width()
         
-        if element.center:
+        if element.center and element.margin_left == None and element.margin_right == None: #center horizontally
             #calculate remaining space in column and divide space by two in order to center
             remaining_space_in_column_x = element._get_cumulative_column_width() - element.get_width()
             left += round(remaining_space_in_column_x / 2)
-        else:
-            ## CURRENTLY MARGIN LEFT MAY ALLOW FOR ELEMENT TO SPILL OVER TO NEXT COLUMN
+        
+        elif element.margin_left != None:#respect margin left
             left += element.get_margin_left()
+
+        elif element.margin_right != None:#respect margin right
+            left += element._get_cumulative_column_width()
+            left -= element.get_margin_right()
+            left -= element.get_width()
 
         return (left,top)
 
