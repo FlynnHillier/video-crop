@@ -29,9 +29,16 @@ class VideoCrop:
         self.clock = pygame.time.Clock()
         self.window = pygame.display.set_mode(self.get_video_dimensions(),pygame.RESIZABLE)
 
+        #video player
+        self.video_player = VideoPlayer(
+            dimensions=(self.gen_dimensions_video_surface()),
+            video=self.video
+        )
+
         #crop overlay
         self.crop_overlay = CropOverlay(
-            bg_dimensions=(self.gen_dimensions_video_surface()),
+            bg_dimensions=(self.video_player.frame_dimensions),
+            position=self.video_player.frame_position,
             initial_rect_dimensions=(90,160),
             handle_width=5,
             max_selection=(608,1080),
@@ -39,11 +46,7 @@ class VideoCrop:
             aspect_ratio=9/16
         )
 
-        #video player
-        self.video_player = VideoPlayer(
-            dimensions=(self.gen_dimensions_video_surface()),
-            video=self.video
-        )
+
 
         self.play_bar = PlayBar(
             dimensions=self.gen_dimensions_playbar_surface(),
@@ -81,10 +84,12 @@ class VideoCrop:
     #resizes window and frame displayed
     def resize_window(self,xy:tuple[int,int]):
         self.window = pygame.display.set_mode(xy,pygame.RESIZABLE)
-
-        self.crop_overlay.resize(self.gen_dimensions_video_surface())
+        
         self.video_player.resize(self.gen_dimensions_video_surface())
 
+        self.crop_overlay.resize(self.video_player.frame_dimensions)
+        self.crop_overlay.set_position(self.video_player.frame_position)
+    
         self.play_bar.resize(self.gen_dimensions_playbar_surface())
 
 
@@ -223,7 +228,7 @@ class VideoCrop:
             self.video_player.tick()
             
             self.window.blit(self.video_player.surface,(0,0))
-            self.window.blit(self.crop_overlay.get_surface(),(0,0))
+            self.window.blit(self.crop_overlay.get_surface(),self.crop_overlay.get_position())
             
             pygame.display.flip()
 

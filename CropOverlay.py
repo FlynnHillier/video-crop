@@ -3,6 +3,7 @@ import pygame
 class CropOverlay:
     def __init__(self,
             bg_dimensions:tuple[int,int],
+            position:tuple[int,int],
             initial_rect_dimensions:tuple[int,int],
             handle_width:int,
             max_selection:tuple[int,int], #max selection rect x y area
@@ -18,6 +19,9 @@ class CropOverlay:
 
         bg_w = bg_dimensions[0]
         bg_h = bg_dimensions[1]
+
+        self.pos_x = position[0]
+        self.pos_y = position[1]
 
         self.max_selection = max_selection
         self.min_selection = min_selection
@@ -46,48 +50,122 @@ class CropOverlay:
         self.is_hovering_body = False
 
 
-    #draw rectangles to surface
-    def update(self):
-        self.surface.fill((0,0,0,self.bg_alpha)) #erase previous rects
-        pygame.draw.rect(self.surface,(255,255,255,255),self.handle_rect,width=self.handle_width)
-        pygame.draw.rect(self.surface,(0,0,0,0),self.body_rect)
+    ### GETTERS ###
 
+    def get_selection(self):
+        return ( (self.body_rect.left , self.body_rect.left + self.body_rect.w) , (self.body_rect.top , self.body_rect.top + self.body_rect.h))
+    
     #update and return the surface
     def get_surface(self):
         self.update()
         return self.surface
     
+    def get_position(self):
+        return (self.pos_x,self.pos_y)
+    
+
+
+    ### SETTERS ###
+
+    def set_position(self,pos:tuple[int,int]):
+        self.pos_x = pos[0]
+        self.pos_y = pos[1]
+    
+
+    ### UTILITY ###
+
+
+    #generate a position that is relative to the position of the surface.
+    def _generate_pos_factoring_surface_pos(self,mouse_pos:tuple[int,int]) -> tuple[int,int]:
+        return (mouse_pos[0] - self.pos_x , mouse_pos[1] - self.pos_y)
+    
+    
+    #generate the position the rectangle should be placed at, factoring in the initial offset, based on the passed pos (typically passed pos will be mouse_pos)
+    def _generate_pos_factoring_drag_offset(self,mouse_pos:tuple[int,int]) -> tuple[int,int]:
+        relative_pos = self._generate_pos_factoring_surface_pos(mouse_pos)
+        
+        return ( relative_pos[0] + self.drag_offset_x , relative_pos[1] + self.drag_offset_y )
+
+
+    #return boolean regarding wether passes position collides with handle of area rectangle
+    def is_handle_collide(self,pos:tuple[int,int]) -> bool:
+        relative_pos = self._generate_pos_factoring_surface_pos(pos)
+
+        return self.handle_rect.collidepoint(relative_pos) and not self.body_rect.collidepoint(relative_pos)
+    
+    #return boolean regarding wether passes position collides with body of area rectangle
+    def is_body_collide(self,pos):
+        relative_pos = self._generate_pos_factoring_surface_pos(pos)
+
+        return self.body_rect.collidepoint(relative_pos)
+
+
+    ### DISPLAY MANIPULATION ###
+
+    #draw rectangles to surface
+    def update(self):
+        self.surface.fill((0,0,0,self.bg_alpha)) #erase previous rects
+        pygame.draw.rect(self.surface,(255,255,255,255),self.handle_rect,width=self.handle_width)
+        pygame.draw.rect(self.surface,(0,0,0,0),self.body_rect)
+    
     #move the selection rectangle to the position specified
     def move_selection_area(self,pos:tuple[int,int]):
         self.handle_rect.left = pos[0]
         self.handle_rect.top = pos[1]
+
         self.combine_rects()
 
 
     #ensure body rect is contained centrally within handle rect
     def combine_rects(self):
+        #resize to fit handle_rect
+        self.body_rect.w = self.handle_rect.w - (2 * self.handle_width)
+        self.body_rect.h = self.handle_rect.h - (2 * self.handle_width)
+
+        #reposition to fit handle rect centrally
         self.body_rect.top = self.handle_rect.top + self.handle_width
         self.body_rect.left = self.handle_rect.left + self.handle_width
 
 
-    #generate the position the rectangle should be placed at, factoring in the initial offset, based on the passed pos (typically passed pos will be mouse_pos)
-    def _generate_pos_factoring_drag_offset(self,pos:tuple[int,int]) -> tuple[int,int]:
-        return ( pos[0] + self.drag_offset_x , pos[1] + self.drag_offset_y )
+
+    ### EVENTS ###
+
+    def resize(self,xy:tuple[int,int]):        
+        original_window_w = self.surface.get_width()
+        original_window_h = self.surface.get_height()
+
+        #resize surface
+        self.surface = pygame.Surface(xy,pygame.SRCALPHA,32)
+
+        
+        ## maintain relative position/dimensions of area selection rect
+
+        #get relative position of rect based on viewport dimensions
+        x_pos_percentage = self.handle_rect.left / original_window_w
+        y_pos_percentage = self.handle_rect.top / original_window_h
+
+        #get relaitve dimensions of rect based on viewport dimensions
+        x_dim_percentage = self.handle_rect.w / original_window_w
+        y_dim_percentage = self.handle_rect.h / original_window_h
+
+        #set relative position based on new viewport
+        self.handle_rect.left = round(x_pos_percentage * self.surface.get_width())
+        self.handle_rect.top = round(y_pos_percentage * self.surface.get_height())
+
+        #set relative dimensions based on new viewport
+        self.handle_rect.w = round(x_dim_percentage * self.surface.get_width())
+        self.handle_rect.h = round(y_dim_percentage * self.surface.get_height())
+
+        self.combine_rects()
 
 
-    #return boolean regarding wether passes position collides with handle of area rectangle
-    def is_handle_collide(self,pos:tuple[int,int]) -> bool:
-        return self.handle_rect.collidepoint(pos) and not self.body_rect.collidepoint(pos)
-    
-    #return boolean regarding wether passes position collides with body of area rectangle
-    def is_body_collide(self,pos):
-        return self.body_rect.collidepoint(pos)
-    
     #to run when lmb down event occurs
-    def on_lmb_down(self,pos):
+    def on_lmb_down(self,pos):        
         if self.is_body_collide(pos):
             self.is_moving = True
-            pos_x,pos_y = pos
+
+            #calculate drag offset based of position of mouse when selecting rect
+            pos_x,pos_y = self._generate_pos_factoring_surface_pos(pos)
             self.drag_offset_x = self.handle_rect.left - pos_x
             self.drag_offset_y = self.handle_rect.top - pos_y
         
@@ -127,10 +205,11 @@ class CropOverlay:
 
         #select correct cursor image based on position within handle (this can change so is done on every move if hovering)
         if self.is_hovering_handle:
-            
+            relative_pos = self._generate_pos_factoring_surface_pos(event.pos)
+
             #get position of mouse relative to the position of the area rect
-            pos_x_relative_to_handle = event.pos[0] - self.handle_rect.left
-            pos_y_relative_to_handle = event.pos[1] - self.handle_rect.top
+            pos_x_relative_to_handle = relative_pos[0] - self.handle_rect.left
+            pos_y_relative_to_handle = relative_pos[1] - self.handle_rect.top
 
             is_top_handle = pos_y_relative_to_handle <= self.handle_width
             is_bot_handle = pos_y_relative_to_handle >= self.handle_rect.h - self.handle_width
@@ -210,6 +289,10 @@ class CropOverlay:
             self.handle_rect.inflate_ip(0,inflate_by_y)
             self.body_rect.inflate_ip(0,inflate_by_y)
 
+        self.handle_rect.clamp_ip(self.surface.get_rect())
+        self.combine_rects()
+
+
     #to run on lmb up event
     def on_lmb_up(self):
         if self.is_moving:
@@ -219,24 +302,4 @@ class CropOverlay:
         
         if self.is_resizing:
             self.is_resizing = False
-
-    
-    def get_selection(self):
-        return ( (self.body_rect.left , self.body_rect.left + self.body_rect.w) , (self.body_rect.top , self.body_rect.top + self.body_rect.h))
-    
-    def resize(self,xy:tuple[int,int]):
-        previous_w = self.surface.get_width()
-        previous_h = self.surface.get_height()
-
-        #get relative height / width based on viewport
-        y_percentage = self.handle_rect.top / previous_h
-        x_percentage = self.handle_rect.left / previous_w
-
-        self.surface = pygame.Surface(xy,pygame.SRCALPHA,32)
-
-        #set relative height based on new viewport
-        self.handle_rect.top = round(y_percentage * xy[1])
-        self.handle_rect.left = round(x_percentage * xy[0])
-
-        self.combine_rects()
 
