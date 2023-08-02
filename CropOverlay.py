@@ -1,24 +1,40 @@
 import pygame
+from Component import Component
 
-class CropOverlay:
+# TODO
+# MAKE FRAME SURFACE A COMPONENT
+# BIND CROP OVERLAY TO FRAME SURFACE SO POSITIONS ITSELF 0,0 AUTOMATICALLY
+# PERHAPS ADD CROP OVERLAY INTO VIDEOPLAYER COMPONENT AND SET A BOOLEAN TO DISPLAY/HIDE OVERLAY - DO THIS #TODO#TODO
+
+
+class CropOverlay(Component):
     def __init__(self,
-            bg_dimensions:tuple[int,int],
-            position:tuple[int,int],
-            initial_rect_dimensions:tuple[int,int],
-            handle_width:int,
-            max_selection:tuple[int,int], #max selection rect x y area
-            min_selection:tuple[int,int],
-            aspect_ratio:float | None = None, #if aspect ratio is passed, ensure initial dimensions are within said aspect ratio
-            bg_alpha:int = 128, #how dark the not selected area of the video should be, 0-255
-        ):
+        dimensions:tuple[int,int],
+        position:tuple[int,int],
+        initial_selection_dimensions:tuple[int,int],
+        handle_width:int,
+        max_selection:tuple[int,int], #max selection rect x y area
+        min_selection:tuple[int,int],
+        aspect_ratio:float | None = None, #if aspect ratio is passed, ensure initial dimensions are within said aspect ratio
+        bg_alpha:int = 128, #how dark the not selected area of the video should be, 0-255
+        parent: Component | None = None
+    ):
+        #SUPER
+        super().__init__(
+            dimensions=dimensions,
+            position=position,
+            parent=parent,
+            surface_args=[pygame.SRCALPHA,32] #transparent surface
+        )
+        
         self.aspect_ratio = aspect_ratio
 
         self.bg_alpha = bg_alpha
 
         self.handle_width = handle_width
 
-        bg_w = bg_dimensions[0]
-        bg_h = bg_dimensions[1]
+        bg_w = dimensions[0]
+        bg_h = dimensions[1]
 
         self.pos_x = position[0]
         self.pos_y = position[1]
@@ -26,11 +42,13 @@ class CropOverlay:
         self.max_selection = max_selection
         self.min_selection = min_selection
 
-        initial_rect_handle_w = initial_rect_dimensions[0]
-        initial_rect_handle_h = initial_rect_dimensions[1]
+        #build area selection rectangle
+        
+        initial_rect_handle_w = initial_selection_dimensions[0]
+        initial_rect_handle_h = initial_selection_dimensions[1]
 
-        initial_rect_body_w = initial_rect_dimensions[0] - (2 * handle_width)
-        initial_rect_body_h = initial_rect_dimensions[1] - (2 * handle_width)
+        initial_rect_body_w = initial_selection_dimensions[0] - (2 * handle_width)
+        initial_rect_body_h = initial_selection_dimensions[1] - (2 * handle_width)
 
         initial_rect_left = int((bg_w  - initial_rect_handle_w) / 2)
         initial_rect_top = int((bg_h  - initial_rect_handle_h) / 2)
@@ -38,11 +56,17 @@ class CropOverlay:
         self.handle_rect = pygame.Rect(initial_rect_left,initial_rect_top,initial_rect_handle_w,initial_rect_handle_h)
         self.body_rect = pygame.Rect(initial_rect_left + self.handle_width,initial_rect_top + self.handle_width,initial_rect_body_w,initial_rect_body_h)
 
-        self.surface = pygame.Surface((bg_w,bg_h),pygame.SRCALPHA,32) #transparent surface
+        self.draw()
+
+        # self.surface = pygame.Surface((bg_w,bg_h),pygame.SRCALPHA,32) #transparent surface
         
+        #drag offset
+
         self.drag_offset_x = 0 #how much to offset position based on mouse location on selection
         self.drag_offset_y = 0 #how much to offset position based on mouse location on selection
 
+
+        #area rect booleans
         self.is_moving = False
         self.is_resizing = False
 
@@ -54,11 +78,6 @@ class CropOverlay:
 
     def get_selection(self):
         return ( (self.body_rect.left , self.body_rect.left + self.body_rect.w) , (self.body_rect.top , self.body_rect.top + self.body_rect.h))
-    
-    #update and return the surface
-    def get_surface(self):
-        self.update()
-        return self.surface
     
     def get_position(self):
         return (self.pos_x,self.pos_y)
@@ -103,7 +122,7 @@ class CropOverlay:
     ### DISPLAY MANIPULATION ###
 
     #draw rectangles to surface
-    def update(self):
+    def draw(self):
         self.surface.fill((0,0,0,self.bg_alpha)) #erase previous rects
         pygame.draw.rect(self.surface,(255,255,255,255),self.handle_rect,width=self.handle_width)
         pygame.draw.rect(self.surface,(0,0,0,0),self.body_rect)
@@ -131,6 +150,8 @@ class CropOverlay:
     ### EVENTS ###
 
     def resize(self,xy:tuple[int,int]):        
+
+
         original_window_w = self.surface.get_width()
         original_window_h = self.surface.get_height()
 
@@ -157,6 +178,7 @@ class CropOverlay:
         self.handle_rect.h = round(y_dim_percentage * self.surface.get_height())
 
         self.combine_rects()
+        self.draw()
 
 
     #to run when lmb down event occurs
@@ -291,6 +313,8 @@ class CropOverlay:
 
         self.handle_rect.clamp_ip(self.surface.get_rect())
         self.combine_rects()
+
+        self.draw()
 
 
     #to run on lmb up event

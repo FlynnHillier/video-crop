@@ -32,14 +32,15 @@ class VideoCrop:
         #video player
         self.video_player = VideoPlayer(
             dimensions=(self.gen_dimensions_video_surface()),
+            position=self.gen_position_video_surface(),
             video=self.video
         )
 
         #crop overlay
         self.crop_overlay = CropOverlay(
-            bg_dimensions=(self.video_player.frame_dimensions),
+            dimensions=(self.video_player.frame_dimensions),
             position=self.video_player.frame_position,
-            initial_rect_dimensions=(90,160),
+            initial_selection_dimensions=(90,160),
             handle_width=5,
             max_selection=(608,1080),
             min_selection=(50,50),
@@ -50,6 +51,7 @@ class VideoCrop:
 
         self.play_bar = PlayBar(
             dimensions=self.gen_dimensions_playbar_surface(),
+            position=self.gen_position_playbar_surface(),
             fps=self.v_fps,
             frame_count=self.video.get(cv2.CAP_PROP_FRAME_COUNT)
         )
@@ -85,11 +87,16 @@ class VideoCrop:
     def resize_window(self,xy:tuple[int,int]):
         self.window = pygame.display.set_mode(xy,pygame.RESIZABLE)
         
+        #video player
         self.video_player.resize(self.gen_dimensions_video_surface())
+        self.video_player.set_position(self.gen_position_video_surface())
 
+        #crop overlay
         self.crop_overlay.resize(self.video_player.frame_dimensions)
         self.crop_overlay.set_position(self.video_player.frame_position)
-    
+        
+        #playbar
+        self.play_bar.set_position(self.gen_position_playbar_surface())
         self.play_bar.resize(self.gen_dimensions_playbar_surface())
 
 
@@ -100,12 +107,19 @@ class VideoCrop:
     def get_video_dimensions(self) -> tuple[int,int]:
         return (self.v_dimensions_width,self.v_dimensions_height)
     
-    #generate video surface display dimensions based on window size
+    #generate video surface display dimensions/position based on window size
     def gen_dimensions_video_surface(self) -> tuple[int,int]:
-        return (self.window.get_width(),self.window.get_height() * self.display_video_coverage_h)
+        return (self.window.get_width(),self.window.get_height() - 200)
     
+    def gen_position_video_surface(self) -> tuple[int,int]:
+        return (0,0)
+    
+    #generate video surface display dimensions/position based on window size
     def gen_dimensions_playbar_surface(self) -> tuple[int,int]:
-        return (self.window.get_width(),self.window.get_height() * self.display_play_bar_coverage_h)
+        return (self.window.get_width(),200)
+    
+    def gen_position_playbar_surface(self) -> tuple[int,int]:
+        return (0,self.gen_dimensions_video_surface()[1])
 
 
 
@@ -116,8 +130,8 @@ class VideoCrop:
         #retrieve selection
         selection = self.crop_overlay.get_selection()
 
-        height_multi = self.v_dimensions_height / self.crop_overlay.get_surface().get_height()
-        width_multi = self.v_dimensions_width / self.crop_overlay.get_surface().get_width()
+        height_multi = self.v_dimensions_height / self.crop_overlay.surface.get_height()
+        width_multi = self.v_dimensions_width / self.crop_overlay.surface.get_width()
 
         #adjust selection (given in window size dimensions) to be relative to real frame size (account for window resize)
         x1 = round(selection[0][0] * width_multi)
@@ -227,8 +241,9 @@ class VideoCrop:
 
             self.video_player.tick()
             
-            self.window.blit(self.video_player.surface,(0,0))
-            self.window.blit(self.crop_overlay.get_surface(),self.crop_overlay.get_position())
+            self.window.blit(self.video_player.surface,self.video_player.get_position())
+            self.window.blit(self.crop_overlay.surface,self.crop_overlay.get_position())
+            self.window.blit(self.play_bar.surface,self.play_bar.get_position())
             
             pygame.display.flip()
 

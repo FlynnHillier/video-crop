@@ -1,5 +1,6 @@
 import pygame
 import cv2 
+from Component import Component,Coordinate
 
 #TODO
 # RESIZE NOW WORKS TO MAINTAIN ASPECT RATIO
@@ -10,12 +11,19 @@ import cv2
 
 
 
-class VideoPlayer:
+class VideoPlayer(Component):
     def __init__(self,
-                 dimensions:tuple[int,int], # the display dimensions we are working with
-                 video:cv2.VideoCapture,
-            ):
-        self.surface = pygame.Surface(dimensions)
+        dimensions:Coordinate, # the display dimensions we are working with
+        position:Coordinate,
+        video:cv2.VideoCapture,
+        parent:None | Component = None,
+    ):
+        #super
+        super().__init__(
+            dimensions=dimensions,
+            position=position,
+            parent=parent,
+        )
 
         self.video = video
         self.current_frame = None
@@ -27,7 +35,6 @@ class VideoPlayer:
 
         self._maintain_aspect_ratio()
         self._center_frame_in_surface()
-
 
         self.paused = False
     
