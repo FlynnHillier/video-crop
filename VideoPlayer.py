@@ -25,40 +25,55 @@ class VideoPlayer(Component):
             parent=parent,
         )
 
-        self.video = video
-        self.current_frame = None
+        self.video : cv2.VideoCapture = video
+        self.current_frame_image = None #in future add logic which reads first frame, then reverts to frame index 0, to display still image on start
 
         v_height = self.video.get(cv2.CAP_PROP_FRAME_HEIGHT)
         v_width = self.video.get(cv2.CAP_PROP_FRAME_WIDTH)
 
         self.aspect_ratio = v_width / v_height
 
-        self._maintain_aspect_ratio()
-        self._center_frame_in_surface()
+        frame_dimensions = self._gen_frame_dimensions_maintaining_aspect_ratio_to_fit_surface()
+
+        self.frame = Component(
+            dimensions=frame_dimensions,
+            position=self._gen_frame_position_center_in_surface(frame_dimensions=frame_dimensions),
+            parent=self,
+        )
 
         self.paused = False
     
 
-    #display frame in window
-    def display_frame(self,frame) -> None:
+    
+
+    #set current frame
+    def set_current_frame(self,frame) -> None:
+        self.current_frame_image = frame
+
+        #update display
+        self.draw()
+    
+    def draw(self) -> None:
         self.surface.fill((0,0,255))
-        resized_frame = self.resize_frame_to_dimensions(frame)
 
-        frame_surface = pygame.image.frombuffer(resized_frame.tobytes(),resized_frame.shape[1::-1],"BGR")
-        self.current_frame = frame
+        #resize frame to fit display
+        resized_frame = cv2.resize(self.current_frame_image,self.frame.get_dimensions())
 
-        #write frame to window
-        self.surface.blit(frame_surface,self.frame_position)
+        frame_image_surface = pygame.image.frombuffer(resized_frame.tobytes(),resized_frame.shape[1::-1],"BGR")
+
+        self.frame.set_surface(frame_image_surface)
+
+        self.surface.blit(self.frame.surface,self.frame.get_position())
+
 
     
     
     #retrieve video dimensions that maintain aspect ratio and fit height of surface
-    def _maintain_aspect_ratio(self) -> tuple[int,int]:
+    def _gen_frame_dimensions_maintaining_aspect_ratio_to_fit_surface(self) -> tuple[int,int]:
         max_width = self.surface.get_width()
         max_height = self.surface.get_height()
 
-        height = self.surface.get_height()
-        width = self.surface.get_width()
+        width,height = self.get_dimensions()
 
         if height * self.aspect_ratio > max_width:
             #adjust for bars on vertical axis
@@ -72,21 +87,23 @@ class VideoPlayer(Component):
             #frame already fits in window dimensions.
             pass
 
-        self.frame_dimensions = (width,height)
+        return (width,height)
     
 
     #returns position of display frame such that it is centered
-    def _center_frame_in_surface(self) -> tuple[int,int]:
-        frame_width = self.frame_dimensions[0]
-        frame_height = self.frame_dimensions[1]
+    def _gen_frame_position_center_in_surface(self,frame_dimensions:Coordinate | None = None) -> tuple[int,int]:
+        if frame_dimensions == None:
+            f_width,f_height = self.frame.get_dimensions()
+        else:
+            f_width,f_height = frame_dimensions
 
         surface_width = self.surface.get_width()
         surface_height = self.surface.get_height()
 
-        left = round((surface_width - frame_width) / 2)
-        top = round((surface_height - frame_height) / 2)
+        left = round((surface_width - f_width) / 2)
+        top = round((surface_height - f_height) / 2)
 
-        self.frame_position = (left,top)
+        return (left,top)
 
 
 
@@ -94,19 +111,16 @@ class VideoPlayer(Component):
     def resize(self,xy:tuple[int,int]):
         self.surface = pygame.Surface(xy)
 
-        ## UPDATE SELF.FRAME_DIMENSIONS
-        self._maintain_aspect_ratio()
-
-        ## UPDATE SELF.FRAME_POSITION
-        self._center_frame_in_surface()
+        #UPDATE FRAME DIMENSIONS
+        self.frame.set_dimensions(self._gen_frame_dimensions_maintaining_aspect_ratio_to_fit_surface())
+        
+        #UPDATE FRAME POS
+        self.frame.set_position(self._gen_frame_position_center_in_surface())
 
         #redisplay current frame onto new surface
-        self.display_frame(self.current_frame)
-
-    #resize frame to fit display
-    def resize_frame_to_dimensions(self,frame): #-> frame
-        return cv2.resize(frame,self.frame_dimensions)
+        self.draw()
     
+
     #toggle pause
     def toggle_pause(self) -> bool:
         self.paused = not self.paused
@@ -121,7 +135,7 @@ class VideoPlayer(Component):
                 self.jump_to_frame(0)
                 return True
 
-            self.display_frame(frame)
+            self.set_current_frame(frame)
         else:
             return False
     
@@ -140,14 +154,13 @@ class VideoPlayer(Component):
         if not success:
             raise Exception("unexpected error, unable to read frame when jumping to frame.")
 
-        self.display_frame(frame)
+        self.set_current_frame(frame)
 
 
     #fetch next frame from video
     def next_frame(self) -> tuple[bool,any]:
         success,frame = self.video.read()
         if success:
-            frame = self.resize_frame_to_dimensions(frame) #resize frame to fit window dimensions
             return True,frame
         else:
             return False,None

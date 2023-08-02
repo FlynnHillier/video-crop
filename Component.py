@@ -23,6 +23,10 @@ class Component:
         #redraw children to surface on resize
         self.draw()
 
+    #manually override surface
+    def set_surface(self,surface:pygame.Surface):
+        self.surface = surface
+
     
     ## GETTERS ###
 
@@ -48,5 +52,6 @@ class Component:
 
     #draw should append all children to the surface
     def draw(self):
-        print("REDEFINE DRAW FUNCTION IF INHERITING FROM COMPONENT CLASS")
+        #if inherited from Component:
+        #print("REDEFINE DRAW FUNCTION IF INHERITING FROM COMPONENT CLASS")
         pass

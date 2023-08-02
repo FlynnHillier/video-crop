@@ -36,16 +36,16 @@ class VideoCrop:
             video=self.video
         )
 
-        #crop overlay
-        self.crop_overlay = CropOverlay(
-            dimensions=(self.video_player.frame_dimensions),
-            position=self.video_player.frame_position,
-            initial_selection_dimensions=(90,160),
-            handle_width=5,
-            max_selection=(608,1080),
-            min_selection=(50,50),
-            aspect_ratio=9/16
-        )
+        # #crop overlay
+        # self.crop_overlay = CropOverlay(
+        #     dimensions=(self.video_player.frame_dimensions),
+        #     position=self.video_player.frame_position,
+        #     initial_selection_dimensions=(90,160),
+        #     handle_width=5,
+        #     max_selection=(608,1080),
+        #     min_selection=(50,50),
+        #     aspect_ratio=9/16
+        # )
 
 
 
@@ -91,9 +91,9 @@ class VideoCrop:
         self.video_player.resize(self.gen_dimensions_video_surface())
         self.video_player.set_position(self.gen_position_video_surface())
 
-        #crop overlay
-        self.crop_overlay.resize(self.video_player.frame_dimensions)
-        self.crop_overlay.set_position(self.video_player.frame_position)
+        # #crop overlay
+        # self.crop_overlay.resize(self.video_player.frame_dimensions)
+        # self.crop_overlay.set_position(self.video_player.frame_position)
         
         #playbar
         self.play_bar.set_position(self.gen_position_playbar_surface())
@@ -127,20 +127,21 @@ class VideoCrop:
 
     # crop the video 
     def crop_area_selection(self):
+        pass
         #retrieve selection
-        selection = self.crop_overlay.get_selection()
+        # selection = self.crop_overlay.get_selection()
 
-        height_multi = self.v_dimensions_height / self.crop_overlay.surface.get_height()
-        width_multi = self.v_dimensions_width / self.crop_overlay.surface.get_width()
+        # height_multi = self.v_dimensions_height / self.crop_overlay.surface.get_height()
+        # width_multi = self.v_dimensions_width / self.crop_overlay.surface.get_width()
 
-        #adjust selection (given in window size dimensions) to be relative to real frame size (account for window resize)
-        x1 = round(selection[0][0] * width_multi)
-        x2 = round(selection[0][1] * width_multi)
+        # #adjust selection (given in window size dimensions) to be relative to real frame size (account for window resize)
+        # x1 = round(selection[0][0] * width_multi)
+        # x2 = round(selection[0][1] * width_multi)
 
-        h1 = round(selection[1][0] * height_multi)
-        h2 = round(selection[1][1] * height_multi)
+        # h1 = round(selection[1][0] * height_multi)
+        # h2 = round(selection[1][1] * height_multi)
 
-        self.video_crop((x1,x2),(h1,h2))
+        # self.video_crop((x1,x2),(h1,h2))
 
     def video_crop(self,x_range:tuple[int,int],y_range:tuple[int,int]):
         #cropped frame size
@@ -194,7 +195,8 @@ class VideoCrop:
             case pygame.MOUSEBUTTONUP:
                 self._handle_event_mouse_up(event)
             case pygame.MOUSEMOTION:
-                self.crop_overlay.on_mouse_motion(event)
+                pass
+                #self.crop_overlay.on_mouse_motion(event)
                 
     
     def _handle_event_key_down(self,event) -> None:
@@ -215,12 +217,13 @@ class VideoCrop:
         match event.button:
             case 1: #LMB
                 mouse_pos = pygame.mouse.get_pos()
-                self.crop_overlay.on_lmb_down(mouse_pos)
+                #self.crop_overlay.on_lmb_down(mouse_pos)
 
     def _handle_event_mouse_up(self,event) -> None:
         match event.button:
             case 1: #LMB
-                self.crop_overlay.on_lmb_up()
+                pass
+                #self.crop_overlay.on_lmb_up()
 
 
 
@@ -242,7 +245,7 @@ class VideoCrop:
             self.video_player.tick()
             
             self.window.blit(self.video_player.surface,self.video_player.get_position())
-            self.window.blit(self.crop_overlay.surface,self.crop_overlay.get_position())
+            # self.window.blit(self.crop_overlay.surface,self.crop_overlay.get_position())
             self.window.blit(self.play_bar.surface,self.play_bar.get_position())
             
             pygame.display.flip()
