@@ -1,6 +1,7 @@
 import pygame
 import cv2 
 from Component import Component,Coordinate
+from CropOverlay import CropOverlay
 
 #TODO
 # RESIZE NOW WORKS TO MAINTAIN ASPECT RATIO
@@ -16,6 +17,7 @@ class VideoPlayer(Component):
         dimensions:Coordinate, # the display dimensions we are working with
         position:Coordinate,
         video:cv2.VideoCapture,
+        show_crop_overlay:bool,
         parent:None | Component = None,
     ):
         #super
@@ -25,6 +27,8 @@ class VideoPlayer(Component):
             parent=parent,
         )
 
+
+        #READING FRAMES / DISPLAY
         self.video : cv2.VideoCapture = video
         self.current_frame_image = None #in future add logic which reads first frame, then reverts to frame index 0, to display still image on start
 
@@ -41,18 +45,29 @@ class VideoPlayer(Component):
             parent=self,
         )
 
+        #CROP OVERLAY
+        self.component_crop_overlay = CropOverlay(
+            dimensions=self.frame.get_dimensions(),
+            position=(0,0),
+            parent=self.frame,
+
+            initial_selection_dimensions=(90,160),
+            handle_width=2,
+            max_selection=(2000,2000),
+            min_selection=(90,160),
+            aspect_ratio=self.aspect_ratio,
+            bg_alpha=128,
+        )
+
+
+        #BOOLEAN
+        self.show_crop_overlay = show_crop_overlay
         self.paused = False
     
 
-    
 
-    #set current frame
-    def set_current_frame(self,frame) -> None:
-        self.current_frame_image = frame
+    ### DRAW ###
 
-        #update display
-        self.draw()
-    
     def draw(self) -> None:
         self.surface.fill((0,0,255))
 
@@ -63,10 +78,69 @@ class VideoPlayer(Component):
 
         self.frame.set_surface(frame_image_surface)
 
+        if self.show_crop_overlay:
+            self.frame.surface.blit(self.component_crop_overlay.surface,self.component_crop_overlay.get_position())
+
         self.surface.blit(self.frame.surface,self.frame.get_position())
 
 
     
+    ### EVENTS ###
+    
+    #handle resize
+    def resize(self,xy:tuple[int,int]):
+        self.surface = pygame.Surface(xy)
+
+        #UPDATE FRAME DIMENSIONS
+        self.frame.set_dimensions(self._gen_frame_dimensions_maintaining_aspect_ratio_to_fit_surface())
+        
+        #UPDATE FRAME POS
+        self.frame.set_position(self._gen_frame_position_center_in_surface())
+
+        #redisplay current frame onto new surface
+        self.draw()
+
+    def _handle_event(self,event):
+        if self.show_crop_overlay:
+            self.component_crop_overlay._handle_event(event)
+
+
+
+    ### SETTERS ###
+
+    #set current frame
+    def set_current_frame(self,frame) -> None:
+        self.current_frame_image = frame
+
+        # #update display
+        # self.draw()
+
+    
+
+    ### GETTERS ###
+    def get_crop_selection(self) -> (Coordinate,Coordinate):
+        if not self.show_crop_overlay:
+            return None
+        
+        selection = self.component_crop_overlay.get_selection()
+
+
+        height_multi = self.video.get(cv2.CAP_PROP_FRAME_HEIGHT) / self.component_crop_overlay.surface.get_height()
+        width_multi = self.video.get(cv2.CAP_PROP_FRAME_WIDTH) / self.component_crop_overlay.surface.get_width()
+
+        #adjust selection (given in window size dimensions) to be relative to real frame size (account for window resize)
+        x1 = round(selection[0][0] * width_multi)
+        x2 = round(selection[0][1] * width_multi)
+
+        h1 = round(selection[1][0] * height_multi)
+        h2 = round(selection[1][1] * height_multi)
+
+        return ((x1,x2),(h1,h2))
+
+
+
+
+    #FRAME POSITIONING/DIMENSIONS
     
     #retrieve video dimensions that maintain aspect ratio and fit height of surface
     def _gen_frame_dimensions_maintaining_aspect_ratio_to_fit_surface(self) -> tuple[int,int]:
@@ -107,20 +181,8 @@ class VideoPlayer(Component):
 
 
 
-    #handle resize
-    def resize(self,xy:tuple[int,int]):
-        self.surface = pygame.Surface(xy)
-
-        #UPDATE FRAME DIMENSIONS
-        self.frame.set_dimensions(self._gen_frame_dimensions_maintaining_aspect_ratio_to_fit_surface())
-        
-        #UPDATE FRAME POS
-        self.frame.set_position(self._gen_frame_position_center_in_surface())
-
-        #redisplay current frame onto new surface
-        self.draw()
+    ### VIDEO INTERACTION ###
     
-
     #toggle pause
     def toggle_pause(self) -> bool:
         self.paused = not self.paused
@@ -128,16 +190,21 @@ class VideoPlayer(Component):
 
     # to be called on each tick of the loop
     def tick(self) -> bool: #return true if end of video
+        isEndOfVideo = False
+        
         if not self.paused:
-            success,frame = self.next_frame()
+            success,frame = self.video.read()
             
             if not success:
                 self.jump_to_frame(0)
-                return True
+                isEndOfVideo =  True
+            else:
+                self.set_current_frame(frame)
 
-            self.set_current_frame(frame)
-        else:
-            return False
+        #update display on every tick (possible inefficiency)
+        self.draw()
+
+        return isEndOfVideo
     
 
     #return true if successfully jumped, return false if out of range of frames
@@ -149,18 +216,9 @@ class VideoPlayer(Component):
             return False
         
         self.video.set(cv2.CAP_PROP_POS_FRAMES,frame_indx)
-        success,frame = self.next_frame()
+        success,frame = self.video.read()
 
         if not success:
             raise Exception("unexpected error, unable to read frame when jumping to frame.")
 
         self.set_current_frame(frame)
-
-
-    #fetch next frame from video
-    def next_frame(self) -> tuple[bool,any]:
-        success,frame = self.video.read()
-        if success:
-            return True,frame
-        else:
-            return False,None

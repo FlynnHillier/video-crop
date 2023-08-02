@@ -42,10 +42,21 @@ class Component:
 
         if self.parent != None:
             parent_left,parent_top = self.parent.get_position_relative_to_window()
+
             left += parent_left
             top += parent_top
         
         return (left,top)
+    
+
+    def convert_window_position_to_relative_to_surface(self,window_pos:Coordinate) -> Coordinate:
+        arg_pos_left,arg_pos_top = window_pos
+        left,top = self.get_position_relative_to_window()
+        
+        return (
+            arg_pos_left - left,
+            arg_pos_top - top,
+        )
 
 
     ## DISPLAY UPDATES ##

@@ -36,9 +36,6 @@ class CropOverlay(Component):
         bg_w = dimensions[0]
         bg_h = dimensions[1]
 
-        self.pos_x = position[0]
-        self.pos_y = position[1]
-
         self.max_selection = max_selection
         self.min_selection = min_selection
 
@@ -78,45 +75,23 @@ class CropOverlay(Component):
 
     def get_selection(self):
         return ( (self.body_rect.left , self.body_rect.left + self.body_rect.w) , (self.body_rect.top , self.body_rect.top + self.body_rect.h))
-    
-    def get_position(self):
-        return (self.pos_x,self.pos_y)
-    
 
-
-    ### SETTERS ###
-
-    def set_position(self,pos:tuple[int,int]):
-        self.pos_x = pos[0]
-        self.pos_y = pos[1]
-    
 
     ### UTILITY ###
-
-
-    #generate a position that is relative to the position of the surface.
-    def _generate_pos_factoring_surface_pos(self,mouse_pos:tuple[int,int]) -> tuple[int,int]:
-        return (mouse_pos[0] - self.pos_x , mouse_pos[1] - self.pos_y)
-    
     
     #generate the position the rectangle should be placed at, factoring in the initial offset, based on the passed pos (typically passed pos will be mouse_pos)
-    def _generate_pos_factoring_drag_offset(self,mouse_pos:tuple[int,int]) -> tuple[int,int]:
-        relative_pos = self._generate_pos_factoring_surface_pos(mouse_pos)
-        
-        return ( relative_pos[0] + self.drag_offset_x , relative_pos[1] + self.drag_offset_y )
+    def _generate_pos_factoring_drag_offset(self,surface_pos:tuple[int,int]) -> tuple[int,int]:        
+        return ( surface_pos[0] + self.drag_offset_x , surface_pos[1] + self.drag_offset_y )
 
 
     #return boolean regarding wether passes position collides with handle of area rectangle
-    def is_handle_collide(self,pos:tuple[int,int]) -> bool:
-        relative_pos = self._generate_pos_factoring_surface_pos(pos)
-
-        return self.handle_rect.collidepoint(relative_pos) and not self.body_rect.collidepoint(relative_pos)
+    def is_handle_collide(self,surface_pos:tuple[int,int]) -> bool:
+        return self.handle_rect.collidepoint(surface_pos) and not self.body_rect.collidepoint(surface_pos)
     
     #return boolean regarding wether passes position collides with body of area rectangle
-    def is_body_collide(self,pos):
-        relative_pos = self._generate_pos_factoring_surface_pos(pos)
+    def is_body_collide(self,surface_pos):
+        return self.body_rect.collidepoint(surface_pos)
 
-        return self.body_rect.collidepoint(relative_pos)
 
 
     ### DISPLAY MANIPULATION ###
@@ -181,21 +156,38 @@ class CropOverlay(Component):
         self.draw()
 
 
+    def _handle_event(self,event):
+        match event.type:
+            case pygame.MOUSEBUTTONDOWN:
+                if event.button == 1: #LMB
+                    self._handle_event_lmb_down(event)
+            case pygame.MOUSEBUTTONUP:
+                if event.button == 1:
+                    self._handle_event_lmb_up(event)
+            case pygame.MOUSEMOTION:
+                self._handle_event_mouse_motion(event)
+
+
+
     #to run when lmb down event occurs
-    def on_lmb_down(self,pos):        
+    def _handle_event_lmb_down(self,event):
+        pos = self.convert_window_position_to_relative_to_surface(event.pos)
+
         if self.is_body_collide(pos):
             self.is_moving = True
 
             #calculate drag offset based of position of mouse when selecting rect
-            pos_x,pos_y = self._generate_pos_factoring_surface_pos(pos)
-            self.drag_offset_x = self.handle_rect.left - pos_x
+            pos_x,pos_y = pos
+            self.drag_offset_x = self.handle_rect.left - pos_x 
             self.drag_offset_y = self.handle_rect.top - pos_y
         
         if self.is_handle_collide(pos):
             self.is_resizing = True
 
     #to run on mouse motion event
-    def on_mouse_motion(self,event):
+    def _handle_event_mouse_motion(self,event):
+        pos = self.convert_window_position_to_relative_to_surface(event.pos)
+
         
         ### handle cursor image change
         original_cursor = pygame.mouse.get_cursor()
@@ -204,20 +196,20 @@ class CropOverlay(Component):
         use_defualt_cursor_on_no_other_changes = False #false because we want to maintain current cursor if it is being dictated by another portion of the program
 
         #check if ended hovering body
-        if self.is_hovering_body and not self.is_body_collide(event.pos):
+        if self.is_hovering_body and not self.is_body_collide(pos):
             self.is_hovering_body = False
             use_defualt_cursor_on_no_other_changes = True
         #check if started hovering body
-        elif not self.is_hovering_body and self.is_body_collide(event.pos):
+        elif not self.is_hovering_body and self.is_body_collide(pos):
             self.is_hovering_body = True
             new_cursor = pygame.SYSTEM_CURSOR_SIZEALL
         
         #check if ended hovering handle
-        if self.is_hovering_handle and not self.is_handle_collide(event.pos):
+        if self.is_hovering_handle and not self.is_handle_collide(pos):
             self.is_hovering_handle = False
             use_defualt_cursor_on_no_other_changes = True
         #check if started hovering handle
-        elif not self.is_hovering_handle and self.is_handle_collide(event.pos):
+        elif not self.is_hovering_handle and self.is_handle_collide(pos):
             self.is_hovering_handle = True
 
         if new_cursor != None and new_cursor != original_cursor:
@@ -227,11 +219,9 @@ class CropOverlay(Component):
 
         #select correct cursor image based on position within handle (this can change so is done on every move if hovering)
         if self.is_hovering_handle:
-            relative_pos = self._generate_pos_factoring_surface_pos(event.pos)
-
             #get position of mouse relative to the position of the area rect
-            pos_x_relative_to_handle = relative_pos[0] - self.handle_rect.left
-            pos_y_relative_to_handle = relative_pos[1] - self.handle_rect.top
+            pos_x_relative_to_handle = pos[0] - self.handle_rect.left
+            pos_y_relative_to_handle = pos[1] - self.handle_rect.top
 
             is_top_handle = pos_y_relative_to_handle <= self.handle_width
             is_bot_handle = pos_y_relative_to_handle >= self.handle_rect.h - self.handle_width
@@ -256,12 +246,12 @@ class CropOverlay(Component):
         
         
         if self.is_moving:
-            self.move_selection_area(self._generate_pos_factoring_drag_offset(event.pos))
+            self.move_selection_area(self._generate_pos_factoring_drag_offset(pos))
         
         if self.is_resizing:
             #calculate wether user is resizing from the left/right & top/bottom
-            is_right_side_select =(event.pos[0] - self.handle_rect.left) - ( self.handle_rect.w  / 2) > 0
-            is_top_side_select = (event.pos[1] - self.handle_rect.top) - ( self.handle_rect.h  / 2) > 0
+            is_right_side_select =(pos[0] - self.handle_rect.left) - ( self.handle_rect.w  / 2) > 0
+            is_top_side_select = (pos[1] - self.handle_rect.top) - ( self.handle_rect.h  / 2) > 0
 
             #get change relative to which direction the user is moving relative to the edges of the rectangle
             change_x = event.rel[0] if is_right_side_select else event.rel[0] * -1
@@ -318,7 +308,7 @@ class CropOverlay(Component):
 
 
     #to run on lmb up event
-    def on_lmb_up(self):
+    def _handle_event_lmb_up(self,event):
         if self.is_moving:
             self.is_moving = False
             self.drag_offset_x = 0
