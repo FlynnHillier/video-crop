@@ -49,10 +49,11 @@ class PlayBar(Component):
                                         width=AspectMultiplier(1),
                                         height=Percentage(0.4)
                                     )
-        self.element_progress = Element(
-                                    "progress",
+        
+        self.element_progress_bar = Element(
+                                    "progress_bar",
                                     order=(1,1),
-                                    width=Percentage(0.95),
+                                    width=Percentage(0.8),
                                     height=Percentage(0.4),
                                 )
         
@@ -67,7 +68,7 @@ class PlayBar(Component):
                                    ],
                                    elements=[
                                        self.element_pauseplay,
-                                       self.element_progress,
+                                       self.element_progress_bar,
                                     ]
                                 )
 
@@ -75,13 +76,12 @@ class PlayBar(Component):
         pauseplay_rect_pos = self.formatter.get_position("pauseplay")
         pauseplay_rect_dim = self.formatter.get_dimensions("pauseplay")
         self.rect_pauseplay = pygame.Rect(*pauseplay_rect_pos,*pauseplay_rect_dim)
-
-        progress_rect_pos = self.formatter.get_position("progress")
-        progress_rect_dim = self.formatter.get_dimensions("progress")
-
-        self.rect_progress_container = pygame.Rect(*progress_rect_pos,*progress_rect_dim)
-    
-        self.rect_progress_bar = pygame.Rect(*progress_rect_pos,1,progress_rect_dim[1])
+        
+        progress_bar_rect_pos = self.formatter.get_position("progress_bar")
+        progress_bar_rect_dim = self.formatter.get_dimensions("progress_bar")
+        self.rect_progress_bar = pygame.Rect(*progress_bar_rect_pos,1,progress_bar_rect_dim[1])
+        
+        self.rect_progress_container = pygame.Rect(*progress_bar_rect_pos,*progress_bar_rect_dim)
 
         self.update_progress_bar()
 
@@ -95,9 +95,13 @@ class PlayBar(Component):
     #draw rects 
     def draw(self):
         self.surface.fill((0,0,0))
-        pygame.draw.rect(self.surface,(255,0,0),self.rect_progress_container)
-        pygame.draw.rect(self.surface,(0,255,255),self.rect_progress_bar)
         pygame.draw.rect(self.surface,(0,255,255),self.rect_pauseplay)
+
+        pygame.draw.rect(self.surface,(255,255,255),self.rect_progress_container)
+        pygame.draw.rect(self.surface,(110,150,200),self.rect_progress_bar)
+        pygame.draw.rect(self.surface,(200,200,200),self.rect_progress_container,width=self._get_outline_width())
+
+
 
 
     def resize(self,xy:tuple[int,int]):
@@ -113,15 +117,18 @@ class PlayBar(Component):
         pauseplay_rect_dim = self.formatter.get_dimensions("pauseplay")
         self.rect_pauseplay = pygame.Rect(*pauseplay_rect_pos,*pauseplay_rect_dim)
 
-        progress_rect_pos = self.formatter.get_position("progress")
-        progress_rect_dim = self.formatter.get_dimensions("progress")
-        self.rect_progress_container = pygame.Rect(*progress_rect_pos,*progress_rect_dim)
+        progress_bar_rect_pos = self.formatter.get_position("progress_bar")
+        progress_bar_rect_dim = self.formatter.get_dimensions("progress_bar")
+        self.rect_progress_bar = pygame.Rect(*progress_bar_rect_pos,*progress_bar_rect_dim)
+        self.update_progress_bar()
+
+
+        self.rect_progress_container = pygame.Rect(*progress_bar_rect_pos,*progress_bar_rect_dim)
 
         self.draw()
 
     def update_progress_bar(self):
         self.rect_progress_bar.w = int(round(self.rect_progress_container.w * self.get_progress_percentage()))
-
 
 
     ### setters ###
@@ -132,6 +139,21 @@ class PlayBar(Component):
         
         self.current_frame_index = index
         self.update_progress_bar()
+
+    
+    ### getters ###
+
+    def _get_outline_width(self) -> int:
+        max_val = 3
+        min_val = 1
+        
+        return  max(
+            min_val,
+            min(
+                max_val,
+                round(self.get_dimensions()[1] * 0.05)
+            )
+        )
 
 
     ### events ###

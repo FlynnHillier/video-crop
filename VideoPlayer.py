@@ -189,8 +189,10 @@ class VideoPlayer(Component):
         return self.paused
 
     # to be called on each tick of the loop
-    def tick(self) -> bool: #return true if end of video
+    def tick(self) -> tuple[bool,bool]: #return true if end of video
+        """returns booleans ( isPlaying , isEndOfVideo )"""
         isEndOfVideo = False
+        isPlaying = not self.paused
         
         if not self.paused:
             success,frame = self.video.read()
@@ -204,7 +206,7 @@ class VideoPlayer(Component):
         #update display on every tick (possible inefficiency)
         self.draw()
 
-        return isEndOfVideo
+        return (isPlaying,isEndOfVideo)
     
 
     #return true if successfully jumped, return false if out of range of frames

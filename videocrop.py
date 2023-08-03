@@ -222,10 +222,16 @@ class VideoCrop:
                 self._handle_event(event)
 
 
-            self.video_player.tick()
+            isPlaying,isEndOfVideo = self.video_player.tick()
+
+            if isPlaying:
+                if not isEndOfVideo:
+                    self.play_bar.next_frame()
+                else:
+                    self.play_bar.set_current_frame_index(0)    
+
             
             self.window.blit(self.video_player.surface,self.video_player.get_position())
-            # self.window.blit(self.crop_overlay.surface,self.crop_overlay.get_position())
             self.window.blit(self.play_bar.surface,self.play_bar.get_position())
             
             pygame.display.flip()
