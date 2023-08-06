@@ -97,6 +97,9 @@ class VideoPlayer(Component):
         #UPDATE FRAME POS
         self.frame.set_position(self._gen_frame_position_center_in_surface())
 
+        #UPDATE CROP OVERLAY
+        self.component_crop_overlay.resize(self.frame.get_dimensions())
+
         #redisplay current frame onto new surface
         self.draw()
 
