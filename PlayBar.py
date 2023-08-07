@@ -180,17 +180,12 @@ class PlayBar(Component):
                 case pygame.MOUSEBUTTONUP:
                     if event.button == 1: #LMB
                         self._handle_event_lmb_up(event)
+                case pygame.MOUSEMOTION:
+                    self._handle_event_mousemotion(event)
 
-
-
-
-
-    ### PLAY BAR INTERACTION ###
-
-    def playbar_is_hovered(self,event:pygame.event.Event) -> bool:
-        return self.rect_progress_container.collidepoint(self.convert_window_position_to_relative_to_surface(event.pos))
     
-
+    # MOUSE
+    
     def _handle_event_lmb_down(self,event):        
         if self.playbar_is_hovered(event):
             if not self.isDraggingBar:
@@ -204,6 +199,24 @@ class PlayBar(Component):
     def _handle_event_lmb_up(self,event):
         if self.isDraggingBar:
             self.isDraggingBar = False
+
+    def _handle_event_mousemotion(self,event):
+        if self.isDraggingBar:
+            jump_to_ms = self.get_ms_on_playbar_selection(event)
+            jump_to_frame_index = self.frame_indx_at_milliseconds(jump_to_ms)
+            pygame.event.post(PostEvent_FrameSkip(jump_to_frame_index).event())
+
+
+
+
+
+
+
+    ### PLAY BAR INTERACTION ###
+
+    def playbar_is_hovered(self,event:pygame.event.Event) -> bool:
+        return self.rect_progress_container.collidepoint(self.convert_window_position_to_relative_to_surface(event.pos))
+    
 
 
 
