@@ -3,11 +3,7 @@ import cv2
 from Component import Component,Coordinate
 from CropOverlay import CropOverlay
 
-#TODO
-# RESIZE NOW WORKS TO MAINTAIN ASPECT RATIO
-# FIT CROP OVERLAY TO ONLY GO OVER VIDEO
-# ADJUST OVERLAY AREA SELECTION TO SCALE WITH WINDOW RESIZE
-# SET MINIMUM DIMENSIONS
+from events import EVENT_FRAME_SKIP
 
 
 
@@ -106,6 +102,9 @@ class VideoPlayer(Component):
     def _handle_event(self,event):
         if self.show_crop_overlay:
             self.component_crop_overlay._handle_event(event)
+
+        if event.type == EVENT_FRAME_SKIP:
+            self.jump_to_frame(frame_indx=event.frame_index)
 
 
 

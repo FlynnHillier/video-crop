@@ -3,6 +3,7 @@ from Formatter import Formatter,Element,Percentage,Span,AspectMultiplier
 from typing import Callable
 from Component import Component,Coordinate
 
+from events import EVENT_FRAME_SKIP,PostEvent_FrameSkip
 
 #TODO
 # 
@@ -83,9 +84,13 @@ class PlayBar(Component):
         
         self.rect_progress_container = pygame.Rect(*progress_bar_rect_pos,*progress_bar_rect_dim)
 
+        #if playbar is being dragged by user
+        self.isDraggingBar = False
+
+
+
+
         self.update_progress_bar()
-
-
         self.draw()
 
 
@@ -139,6 +144,7 @@ class PlayBar(Component):
         
         self.current_frame_index = index
         self.update_progress_bar()
+        self.draw()
 
     
     ### getters ###
@@ -158,10 +164,46 @@ class PlayBar(Component):
 
     ### events ###
     def _handle_event(self,event):
-        match event.type:
-            case pygame.VIDEORESIZE:
-                self.resize((event.w,event.h))
 
+        #custom
+        if event.type == EVENT_FRAME_SKIP:
+            self.set_current_frame_index(event.frame_index)
+        
+        #vanilla
+        else:
+            match event.type:
+                case pygame.VIDEORESIZE:
+                    self.resize((event.w,event.h))
+                case pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1: #LMB
+                        self._handle_event_lmb_down(event)
+                case pygame.MOUSEBUTTONUP:
+                    if event.button == 1: #LMB
+                        self._handle_event_lmb_up(event)
+
+
+
+
+
+    ### PLAY BAR INTERACTION ###
+
+    def playbar_is_hovered(self,event:pygame.event.Event) -> bool:
+        return self.rect_progress_container.collidepoint(self.convert_window_position_to_relative_to_surface(event.pos))
+    
+
+    def _handle_event_lmb_down(self,event):        
+        if self.playbar_is_hovered(event):
+            if not self.isDraggingBar:
+                self.isDraggingBar = True
+
+                #post event to indicate to jump to specified location in video
+                jump_to_ms = self.get_ms_on_playbar_selection(event)
+                jump_to_frame_index = self.frame_indx_at_milliseconds(jump_to_ms)
+                pygame.event.post(PostEvent_FrameSkip(jump_to_frame_index).event())
+
+    def _handle_event_lmb_up(self,event):
+        if self.isDraggingBar:
+            self.isDraggingBar = False
 
 
 
@@ -169,14 +211,38 @@ class PlayBar(Component):
 
     ### backend utility ###
 
-    #get the duration each frame is present in video for
+    #return millisecond timestamp within video, based on where user clicks on the progress bar
+    def get_ms_on_playbar_selection(self,event:pygame.event.Event) -> int:
+        if not (event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.MOUSEMOTION):
+            raise Exception("invalid event type to retrieve ms on playbar selection")
+        
+        relative_mouse_pos = self.convert_window_position_to_relative_to_surface(event.pos)
+        relative_progress_bar_pos = self.formatter.get_position("progress_bar")
+        
+        x_vector_from_playbar_container_start = relative_mouse_pos[0] - relative_progress_bar_pos[0]
+
+        bar_container_width = self.rect_progress_container.w
+        
+        progress_percentage = x_vector_from_playbar_container_start / bar_container_width
+
+        return round(self.get_video_length() * progress_percentage)
+
+        
+
+
+    #get length of video in milliseconds
+    def get_video_length(self) -> int:
+        return round((self.frame_count / self.fps) * 1000)
+
+
+    #get the duration each frame is present in video for, in milliseconds
     def get_duration_per_frame(self) -> float:
-        return 1 / self.fps
+        return 1000 / self.fps
 
     #get timestamp from frame in milliseconds
-    def seconds_time_from_frame(self,frame_indx) -> float:
+    def milliseconds_time_from_frame(self,frame_indx) -> float:
         frame_duration = self.get_duration_per_frame()
-        return frame_indx * frame_duration * 1000
+        return frame_indx * frame_duration
     
     #convert seconds to timestamp
     def seconds_to_timestmap(self,milliseconds:float):

@@ -153,6 +153,7 @@ class VideoCrop:
 
     def _handle_event(self,event) -> None:
         self.video_player._handle_event(event)
+        self.play_bar._handle_event(event)
         
         match event.type:
             #handle user quit window
