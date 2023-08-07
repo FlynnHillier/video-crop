@@ -6,17 +6,7 @@ from PausePlayButton import PausePlayButton
 from events import EVENT_FRAME_SKIP,PostEvent_FrameSkip
 
 #TODO
-# 
-
-
-# ADD PAUSE BUTTON FUNCTIONALITY
-# THIN OUT PLAYBAR HEIGHT, ADD MIN MAX
-# ADD ABILITY TO MOVE END OF PROGRESS BAR
-# BETTER INTEGRATE 'NEXT_FRAME' FUNCTIONALITY INTO VIDEOCROP.PY
-
-# NEXT FRAME AS AN EVENT SO CAN BE HANDLED EASILY THROUGHOUT EACH COMPONENT, ATTR: frame_index
-# PAUSE AS AN EVENT SO CAN BE HANDLED EASILY THROUGHOUT EACH COMPONENT, ATTR: state
-# FRAME SKIP, ATTR: frame_index (maybe only need this instead of next frame also)
+# Make PausePlay button functional
 
 
 class PlayBar(Component):
@@ -140,7 +130,7 @@ class PlayBar(Component):
     ### setters ###
 
     def set_current_frame_index(self,index) -> None:
-        if index > self.frame_count:
+        if index > self.frame_count or index < 0:
             raise Exception(f"cannot set frame index to a frame greater than the frame count. Tried setting index '{index}' , frame-count: '{self.frame_count}'")
         
         self.current_frame_index = index
@@ -237,6 +227,12 @@ class PlayBar(Component):
         x_vector_from_playbar_container_start = relative_mouse_pos[0] - relative_progress_bar_pos[0]
 
         bar_container_width = self.rect_progress_container.w
+
+        #account for dragging past bounds of playbar
+        if x_vector_from_playbar_container_start < 0:
+            x_vector_from_playbar_container_start = 0
+        elif x_vector_from_playbar_container_start > bar_container_width:
+            x_vector_from_playbar_container_start = bar_container_width
         
         progress_percentage = x_vector_from_playbar_container_start / bar_container_width
 
