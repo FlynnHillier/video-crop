@@ -198,11 +198,7 @@ class VideoCrop:
 
             isPlaying,isEndOfVideo = self.video_player.tick()
 
-            if isPlaying:
-                if not isEndOfVideo:
-                    self.play_bar.next_frame()
-                else:
-                    self.play_bar.set_current_frame_index(0)    
+            self.play_bar.tick(video_is_playing=isPlaying)
 
             
             self.window.blit(self.video_player.surface,self.video_player.get_position())

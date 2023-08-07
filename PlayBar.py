@@ -88,6 +88,15 @@ class PlayBar(Component):
     
     ### display changes ###
 
+    #to be ran on each tick
+    def tick(self,video_is_playing:bool) -> None:
+        if video_is_playing:
+            self.next_frame(draw=False)
+        
+        self.draw()
+
+
+
     #draw rects 
     def draw(self):
         self.surface.fill((0,0,0))
@@ -286,9 +295,16 @@ class PlayBar(Component):
 
 
     #updates the progress bar on display of next frame
-    def next_frame(self) -> None:
-        self.set_current_frame_index(self.current_frame_index + 1)
-        self.draw()
+    def next_frame(self,draw=True) -> None:
+        if self.current_frame_index + 1 > self.frame_count:
+            #reset frame index when end of video is reached
+            self.set_current_frame_index(0)
+        else:
+            #if not end of video progress to next frame
+            self.set_current_frame_index(self.current_frame_index + 1)
+
+        if draw:
+            self.draw()
     
 
 
