@@ -1,7 +1,7 @@
 import pygame
 from Formatter import Formatter,Element,Percentage,Span,AspectMultiplier
-from typing import Callable
 from Component import Component,Coordinate
+from PausePlayButton import PausePlayButton
 
 from events import EVENT_FRAME_SKIP,PostEvent_FrameSkip
 
@@ -74,9 +74,10 @@ class PlayBar(Component):
                                 )
 
 
-        pauseplay_rect_pos = self.formatter.get_position("pauseplay")
-        pauseplay_rect_dim = self.formatter.get_dimensions("pauseplay")
-        self.rect_pauseplay = pygame.Rect(*pauseplay_rect_pos,*pauseplay_rect_dim)
+        pauseplay_pos = self.formatter.get_position("pauseplay")
+        pauseplay_dim = self.formatter.get_dimensions("pauseplay")
+        
+        self.component_pauseplay_button = PausePlayButton(pauseplay_dim,pauseplay_pos,parent=self)
         
         progress_bar_rect_pos = self.formatter.get_position("progress_bar")
         progress_bar_rect_dim = self.formatter.get_dimensions("progress_bar")
@@ -100,7 +101,7 @@ class PlayBar(Component):
     #draw rects 
     def draw(self):
         self.surface.fill((0,0,0))
-        pygame.draw.rect(self.surface,(0,255,255),self.rect_pauseplay)
+        self.surface.blit(self.component_pauseplay_button.surface,self.component_pauseplay_button.get_position())
 
         pygame.draw.rect(self.surface,(255,255,255),self.rect_progress_container)
         pygame.draw.rect(self.surface,(110,150,200),self.rect_progress_bar)
@@ -164,6 +165,7 @@ class PlayBar(Component):
 
     ### events ###
     def _handle_event(self,event):
+        self.component_pauseplay_button._handle_event(event)
 
         #custom
         if event.type == EVENT_FRAME_SKIP:
