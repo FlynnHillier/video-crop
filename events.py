@@ -19,3 +19,10 @@ class PostEvent_FrameSkip(PostEvent):
             "frame_index": frame_index
         }
         super().__init__(EVENT_FRAME_SKIP,args)
+
+
+# pause
+EVENT_PAUSE = pygame.event.custom_type()
+
+#play
+EVENT_PLAY = pygame.event.custom_type()

@@ -167,17 +167,6 @@ class VideoCrop:
             #handle keypress
             case pygame.KEYDOWN:
                 self._handle_event_key_down(event)
-
-
-            ## MOUSE ##
-
-            case pygame.MOUSEBUTTONDOWN:
-                self._handle_event_mouse_down(event)
-            case pygame.MOUSEBUTTONUP:
-                self._handle_event_mouse_up(event)
-            case pygame.MOUSEMOTION:
-                pass
-                #self.crop_overlay.on_mouse_motion(event)
                 
     
     def _handle_event_key_down(self,event) -> None:
@@ -185,26 +174,10 @@ class VideoCrop:
             #quit on escape key press (for dev testing purposes)
             case pygame.K_ESCAPE:
                 self.quit()
-            
-            #toggle pause video
-            case pygame.K_SPACE:
-                self.video_player.toggle_pause()
 
             #save video
             case pygame.K_RETURN:
                 self.video_crop()
-                
-    def _handle_event_mouse_down(self,event) -> None:
-        match event.button:
-            case 1: #LMB
-                mouse_pos = pygame.mouse.get_pos()
-                #self.crop_overlay.on_lmb_down(mouse_pos)
-
-    def _handle_event_mouse_up(self,event) -> None:
-        match event.button:
-            case 1: #LMB
-                pass
-                #self.crop_overlay.on_lmb_up()
 
 
 

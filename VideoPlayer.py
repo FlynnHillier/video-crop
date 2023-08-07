@@ -3,7 +3,7 @@ import cv2
 from Component import Component,Coordinate
 from CropOverlay import CropOverlay
 
-from events import EVENT_FRAME_SKIP
+from events import EVENT_FRAME_SKIP,EVENT_PAUSE,EVENT_PLAY
 
 
 
@@ -100,11 +100,29 @@ class VideoPlayer(Component):
         self.draw()
 
     def _handle_event(self,event):
+        #pass of events to children
         if self.show_crop_overlay:
             self.component_crop_overlay._handle_event(event)
 
-        if event.type == EVENT_FRAME_SKIP:
+        #handle native
+        if event.type == pygame.KEYDOWN:
+            self._handle_event_key_down(event)
+        elif event.type == EVENT_FRAME_SKIP:
             self.jump_to_frame(frame_indx=event.frame_index)
+        elif event.type == EVENT_PAUSE:
+            self.pause()
+        elif event.type == EVENT_PLAY:
+            self.play()
+
+    def _handle_event_key_down(self,event:pygame.event.Event):
+        #post event that toggles pause
+        if event.key == pygame.K_SPACE:
+            if self.paused:
+                pygame.event.post(pygame.event.Event(EVENT_PLAY))
+            else:
+                pygame.event.post(pygame.event.Event(EVENT_PAUSE))
+
+
 
 
 
@@ -189,6 +207,14 @@ class VideoPlayer(Component):
     def toggle_pause(self) -> bool:
         self.paused = not self.paused
         return self.paused
+    
+    def pause(self):
+        self.paused = True
+
+    def play(self):
+        self.paused = False
+
+
 
     # to be called on each tick of the loop
     def tick(self) -> tuple[bool,bool]: #return true if end of video
