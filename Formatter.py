@@ -398,6 +398,50 @@ class Formatter:
             self._update_on_resize()
 
 
+    #calculates position based on passed dimensions within the order specified, returns the position
+    def gen_dynamic_rect_position(self,
+        rect_dimensions:tuple[int,int],
+        order:tuple[int | Span,int | Span],
+        center:bool = True,
+        margin_right : int | None | Percentage = None,
+        margin_left : int | None | Percentage = None,
+        margin_top : int | None | Percentage = None,
+        margin_bottom : int | None | Percentage = None,
+    ):
+        rect_w = rect_dimensions[0]
+        rect_h = rect_dimensions[1]
+        
+        temp_element = Element(
+            id="_temp",
+            order=order,
+            margin={
+                "right":margin_right,
+                "left":margin_left,
+                "top":margin_top,
+                "bottom":margin_bottom,
+            },
+            height=rect_h,
+            width=rect_w,
+            center=center,
+        )
+
+        temp_element._bind_to_parent(self.parent)
+
+        #bind to columns
+        for i in range(temp_element._order[0].start,temp_element._order[0].end + 1):
+            temp_element._bind_to_colum(self.columns[i])
+
+        #bind to rows
+        for i in range(temp_element._order[1].start,temp_element._order[1].end + 1):
+            temp_element._bind_to_row(self.rows[i])
+
+        return self._get_element_position(temp_element)
+
+
+
+
+
+
     ### WATERFALL CHILD ELEMENT UPDATES ###
 
     #triggers waterfall effect, updating reliant children
@@ -416,14 +460,22 @@ class Formatter:
         return (width,height)
 
 
-    
-    #gen position (<left>,<top>)
-    def _get_element_position(self,element:Element) -> tuple[int,int]:      
-        column_start = element._order[0].start
-        column_end = element._order[0].end
+    #gen position order
+    def _get_order_position(self,order:tuple[int | Span,int | Span]) -> tuple[int,int]:
+        if type(order[0]) == Span:
+            column_span = order[0]
+        elif type(order[0]) == int:
+            column_span = Span(order[0],spread=0)
+
+        if type(order[1]) == Span:
+            row_span = order[1]
+        elif type(order[1]) == int:
+            row_span = Span(order[1],spread=0)
+
         
-        row_start = element._order[1].start
-        row_end = element._order[1].end
+        column_start = column_span.start
+        
+        row_start = row_span.start
 
         ## TOP
         top = 0
@@ -431,8 +483,23 @@ class Formatter:
         #get all previous rows
         for row in self.rows[:row_start]:
             top += row.get_height()
-        
 
+        ## LEFT
+        left = 0
+
+        #all previous columns
+        for column in self.columns[:column_start]:
+            left += column.get_width()
+    
+        return (left,top)
+
+
+    
+    #gen position (<left>,<top>) of element, respecting element's margin / centering preferences
+    def _get_element_position(self,element:Element) -> tuple[int,int]:      
+        left,top =  self._get_order_position(element._order)
+        
+        # TOP
         if element.center and element.margin_bottom == None and element.margin_top == None: #center vertically
             #calculate remaining space in row and divide space by two in order to center (should work even for overflow?)
             remaining_space_in_row_y = element._get_cumulative_row_height() - element.get_height()
@@ -447,14 +514,7 @@ class Formatter:
             top -= element.get_height()
 
 
-
-        ## LEFT
-        left = 0
-
-        #all previous columns
-        for column in self.columns[:column_start]:
-            left += column.get_width()
-        
+        # LEFT
         if element.center and element.margin_left == None and element.margin_right == None: #center horizontally
             #calculate remaining space in column and divide space by two in order to center
             remaining_space_in_column_x = element._get_cumulative_column_width() - element.get_width()
@@ -469,7 +529,6 @@ class Formatter:
             left -= element.get_width()
 
         return (left,top)
-
 
     ### SEGMENTING ###
 
