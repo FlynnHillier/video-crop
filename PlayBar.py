@@ -60,8 +60,6 @@ class PlayBar(Component):
             height=Percentage(0.4),
         )
 
-        print(dimensions)
-
         self.formatter = Formatter(
             parent_dimensions=dimensions,
             rows=[
@@ -119,7 +117,6 @@ class PlayBar(Component):
 
         #pauseplay button
         pauseplay_pos = self.formatter.get_position("pauseplay")
-        print(pauseplay_pos)
         pauseplay_dim = self.formatter.get_dimensions("pauseplay")
         self.component_pauseplay_button = PausePlayButton(pauseplay_dim,pauseplay_pos,parent=self)
 
