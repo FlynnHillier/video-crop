@@ -78,7 +78,15 @@ class VideoCrop:
 
     #resizes window and frame displayed
     def resize_window(self,xy:tuple[int,int]):
-        self.window = pygame.display.set_mode(xy,pygame.RESIZABLE)
+        min_size = (600,600)
+        
+        resize_w,resize_h = xy
+
+        width = max(resize_w,min_size[0])
+        height = max(resize_h,min_size[1])
+
+
+        self.window = pygame.display.set_mode((width,height),pygame.RESIZABLE)
         
         #video player
         self.video_player.resize(self.gen_dimensions_video_surface())
