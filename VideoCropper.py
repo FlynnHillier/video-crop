@@ -4,11 +4,11 @@ from VideoPlayer import VideoPlayer
 from PlayBar import PlayBar
 
 def main():
-    v = VideoCrop("sample.mp4")
+    v = VideoCropper("sample.mp4")
     v.start()
 
 
-class VideoCrop:
+class VideoCropper:
     def __init__(self,
                  fp:str,
                  out_file_path="out.mp4",
