@@ -3,3 +3,6 @@ venv
 
 #media
 *.mp4
+
+#compile
+__pycache__
