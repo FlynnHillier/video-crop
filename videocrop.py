@@ -9,7 +9,13 @@ def main():
 
 
 class VideoCrop:
-    def __init__(self,fp:str,out_file_path="out.mp4",quit_on_crop=True,bg_colour=(100,100,120)) -> None:
+    def __init__(self,
+                 fp:str,
+                 out_file_path="out.mp4",
+                 quit_on_crop=True,
+                 bg_colour:tuple[int,int,int]=(100,100,120),
+                 start_dimensions:tuple[int,int] = (600,800),
+        ) -> None:
         self.video = cv2.VideoCapture(fp)
 
         if self.video.isOpened() == False:
@@ -26,9 +32,15 @@ class VideoCrop:
 
         #display
         self.clock = pygame.time.Clock()
-        self.window = pygame.display.set_mode(self.get_video_dimensions(),pygame.RESIZABLE)
+        self.window = pygame.display.set_mode(start_dimensions,pygame.RESIZABLE)
 
+        #set caption
         pygame.display.set_caption(fp)
+
+        #set icon
+        icon = pygame.image.load("media\\icon.png")
+        pygame.display.set_icon(icon)
+
 
         #video player
         self.video_player = VideoPlayer(
