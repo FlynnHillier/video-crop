@@ -14,7 +14,7 @@ class VideoCropper:
                  out_file_path="out.mp4",
                  quit_on_crop=True,
                  bg_colour:tuple[int,int,int]=(100,100,120),
-                 start_dimensions:tuple[int,int] = (1200,800),
+                 window_start_dimensions:tuple[int,int] = (1200,800),
                  crop_aspect_ratio:float | None = None,
         ) -> None:
         self.video = cv2.VideoCapture(fp)
@@ -33,7 +33,7 @@ class VideoCropper:
 
         #display
         self.clock = pygame.time.Clock()
-        self.window = pygame.display.set_mode(start_dimensions,pygame.RESIZABLE)
+        self.window = pygame.display.set_mode(window_start_dimensions,pygame.RESIZABLE)
 
         #set caption
         pygame.display.set_caption(fp)
