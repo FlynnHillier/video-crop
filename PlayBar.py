@@ -24,7 +24,7 @@ class PlayBar(Component):
                 bg_colour = (0,0,0),
                 parent:Component | None = None
             ):
-        
+
         #inheritance
         super().__init__(
             dimensions=dimensions,
@@ -60,6 +60,7 @@ class PlayBar(Component):
             height=Percentage(0.4),
         )
 
+        print(dimensions)
 
         self.formatter = Formatter(
             parent_dimensions=dimensions,
@@ -68,9 +69,9 @@ class PlayBar(Component):
                 Percentage(0.8,relative_to_container=False),
             ],
             columns=[
-                Percentage(0.05,relative_to_container=False),
-                Percentage(0.05,relative_to_container=False),
-                Percentage(0.85,relative_to_container=False),
+                Percentage(0.1,relative_to_container=False),
+                Percentage(0,relative_to_container=False),
+                Percentage(0.8,relative_to_container=False),
             ],
             elements=[
                 self.element_pauseplay,
@@ -118,6 +119,7 @@ class PlayBar(Component):
 
         #pauseplay button
         pauseplay_pos = self.formatter.get_position("pauseplay")
+        print(pauseplay_pos)
         pauseplay_dim = self.formatter.get_dimensions("pauseplay")
         self.component_pauseplay_button = PausePlayButton(pauseplay_dim,pauseplay_pos,parent=self)
 
@@ -181,12 +183,14 @@ class PlayBar(Component):
         #draw pauseplay
         pauseplay_rect_pos = self.formatter.get_position("pauseplay")
         pauseplay_rect_dim = self.formatter.get_dimensions("pauseplay")
-        self.rect_pauseplay = pygame.Rect(*pauseplay_rect_pos,*pauseplay_rect_dim)
+        self.component_pauseplay_button.set_dimensions(pauseplay_rect_dim)
+        self.component_pauseplay_button.set_position(pauseplay_rect_pos)
 
         #draw progress bar rect
         progress_bar_rect_pos = self.formatter.get_position("progress_bar")
         progress_bar_rect_dim = self.formatter.get_dimensions("progress_bar")
-        self.rect_progress_bar = pygame.Rect(*progress_bar_rect_pos,*progress_bar_rect_dim)
+        self.rect_progress_bar = pygame.Rect(*progress_bar_rect_pos,1,progress_bar_rect_dim[1])
+        self.rect_progress_container = pygame.Rect(*progress_bar_rect_pos,*progress_bar_rect_dim)
         self.update_progress_bar()
 
 
