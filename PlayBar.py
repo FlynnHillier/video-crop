@@ -21,6 +21,7 @@ class PlayBar(Component):
                 position:Coordinate,
                 fps:int,
                 frame_count:int,
+                bg_colour = (0,0,0),
                 parent:Component | None = None
             ):
         
@@ -31,7 +32,7 @@ class PlayBar(Component):
             parent=parent,
         )
 
-        self.bg_colour = (0,0,0)
+        self.bg_colour = bg_colour
 
         # self.surface  = pygame.Surface(dimensions)
         self.surface.fill(self.bg_colour)

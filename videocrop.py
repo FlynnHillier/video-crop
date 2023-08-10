@@ -1,6 +1,5 @@
 import pygame
 import cv2
-from CropOverlay import CropOverlay
 from VideoPlayer import VideoPlayer
 from PlayBar import PlayBar
 
@@ -10,7 +9,7 @@ def main():
 
 
 class VideoCrop:
-    def __init__(self,fp:str) -> None:
+    def __init__(self,fp:str,bg_colour=(100,100,120)) -> None:
         self.video = cv2.VideoCapture(fp)
 
         if self.video.isOpened() == False:
@@ -29,12 +28,15 @@ class VideoCrop:
         self.clock = pygame.time.Clock()
         self.window = pygame.display.set_mode(self.get_video_dimensions(),pygame.RESIZABLE)
 
+        pygame.display.set_caption(fp)
+
         #video player
         self.video_player = VideoPlayer(
             dimensions=(self.gen_dimensions_video_surface()),
             position=self.gen_position_video_surface(),
             video=self.video,
             show_crop_overlay=True,
+            bg_colour=bg_colour
         )
 
 
@@ -43,7 +45,8 @@ class VideoCrop:
             dimensions=self.gen_dimensions_playbar_surface(),
             position=self.gen_position_playbar_surface(),
             fps=self.v_fps,
-            frame_count=self.video.get(cv2.CAP_PROP_FRAME_COUNT)
+            frame_count=self.video.get(cv2.CAP_PROP_FRAME_COUNT),
+            bg_colour=bg_colour,
         )
 
         #display variables

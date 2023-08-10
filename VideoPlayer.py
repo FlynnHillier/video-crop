@@ -6,14 +6,13 @@ from CropOverlay import CropOverlay
 from events import EVENT_FRAME_SKIP,EVENT_PAUSE,EVENT_PLAY
 
 
-
-
 class VideoPlayer(Component):
     def __init__(self,
         dimensions:Coordinate, # the display dimensions we are working with
         position:Coordinate,
         video:cv2.VideoCapture,
         show_crop_overlay:bool,
+        bg_colour = (0,0,0),
         parent:None | Component = None,
     ):
         #super
@@ -23,6 +22,7 @@ class VideoPlayer(Component):
             parent=parent,
         )
 
+        self.bg_colour = bg_colour
 
         #READING FRAMES / DISPLAY
         self.video : cv2.VideoCapture = video
@@ -65,7 +65,7 @@ class VideoPlayer(Component):
     ### DRAW ###
 
     def draw(self) -> None:
-        self.surface.fill((0,0,255))
+        self.surface.fill(self.bg_colour)
 
         #resize frame to fit display
         resized_frame = cv2.resize(self.current_frame_image,self.frame.get_dimensions())

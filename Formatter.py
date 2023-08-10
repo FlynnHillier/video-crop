@@ -466,7 +466,6 @@ class Formatter:
     def add_element(self,element:Element) -> None:
         #bind element to rows
         for row in self.rows[element._order[1].start : element._order[1].end + 1]:
-            print("row")
             element._bind_to_row(row)
 
         #bind element to columns
