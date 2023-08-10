@@ -9,7 +9,7 @@ def main():
 
 
 class VideoCrop:
-    def __init__(self,fp:str,bg_colour=(100,100,120)) -> None:
+    def __init__(self,fp:str,out_file_path="out.mp4",quit_on_crop=True,bg_colour=(100,100,120)) -> None:
         self.video = cv2.VideoCapture(fp)
 
         if self.video.isOpened() == False:
@@ -49,27 +49,32 @@ class VideoCrop:
             bg_colour=bg_colour,
         )
 
-        #display variables
-        self.shown = False
-        self.running = True
+        self.in_fp = fp
+        self.out_fp = out_file_path
+
+        #boolean variables
+        self.quit_on_crop = quit_on_crop
+        # self.shown = False
+        self.running = False
 
 
 
     ### USER-EXPOSED INTERACTION METHODS ###
 
 
-    #hide window (not tested)
-    def hide(self) -> None:
-        pygame.display.set_mode((100,100),flags=pygame.HIDDEN)
-        self.shown = False
+    # #hide window (not tested)
+    # def hide(self) -> None:
+    #     pygame.display.set_mode((100,100),flags=pygame.HIDDEN)
+    #     self.shown = False
     
-    #show window (not tested)
-    def show(self) -> None:
-        pygame.display.set_mode((self.v_dimensions_width,self.v_dimensions_height),pygame.RESIZABLE)
-        self.shown = True
+    # #show window (not tested)
+    # def show(self) -> None:
+    #     pygame.display.set_mode((self.v_dimensions_width,self.v_dimensions_height),pygame.RESIZABLE)
+    #     self.shown = True
     
     #start
     def start(self) -> None:
+        self.running = True
         self._start_event_loop()
 
     #quit
@@ -141,10 +146,10 @@ class VideoCrop:
         fourcc = cv2.VideoWriter.fourcc(*"mp4v")
         
         #video writer constructor
-        out = cv2.VideoWriter("out.mp4",fourcc,self.v_fps,(frame_w,frame_h)) 
+        out = cv2.VideoWriter(self.out_fp,fourcc,self.v_fps,(frame_w,frame_h)) 
 
         #read from new videocapture
-        cap = cv2.VideoCapture("sample.mp4")
+        cap = cv2.VideoCapture(self.in_fp)
 
         #read each frame of video
         while cap.isOpened():
@@ -157,6 +162,9 @@ class VideoCrop:
                 cap.release()
         
         out.release()
+
+        if self.quit_on_crop:
+            self.quit()
 
 
 
