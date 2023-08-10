@@ -438,6 +438,53 @@ class Formatter:
         return self._get_element_position(temp_element)
 
 
+    #get the height of the row specified
+    def get_row_height(self,row_index:int) -> int:
+        max_row_index = len(self.rows) - 1
+
+        if row_index > max_row_index or row_index < 0:
+            raise ValueError(f"invalid row index '{row_index}' , maximum row index {max_row_index}")
+
+        row = self.rows[row_index]
+
+        return row.get_height()
+    
+
+    #get the width of the column specified
+    def get_column_width(self,column_index:int) -> int:
+        max_column_index = len(column_index) -1
+
+        if column_index > max_column_index or column_index < 0:
+            raise ValueError(f"invalid row index '{column_index}' , maximum column index {max_column_index}")
+        
+        column = self.columns[column_index]
+
+        return column.get_width()
+    
+
+    #add a new element
+    def add_element(self,element:Element) -> None:
+        #bind element to rows
+        for row in self.rows[element._order[1].start : element._order[1].end + 1]:
+            print("row")
+            element._bind_to_row(row)
+
+        #bind element to columns
+        for column in self.columns[element._order[0].start : element._order[0].end + 1]:
+            element._bind_to_colum(column)
+
+        #bind element to parent
+        element._bind_to_parent(self.parent)
+
+
+        self.elements.append(element)
+
+
+
+
+
+
+
 
 
 

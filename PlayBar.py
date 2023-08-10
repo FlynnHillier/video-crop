@@ -6,7 +6,13 @@ from PausePlayButton import PausePlayButton
 from events import EVENT_FRAME_SKIP,PostEvent_FrameSkip
 
 #TODO
-# Make PausePlay button functional
+#PLAN
+#generate font rect, maybe create new method to expose row height easily - X
+#also create method that allows for updating element dimensions
+#then with font rect, create element specfiying absolute dimensions - X
+# on resize use newly created method (mentioned previously) and
+
+
 
 
 class PlayBar(Component):
@@ -25,8 +31,10 @@ class PlayBar(Component):
             parent=parent,
         )
 
+        self.bg_colour = (0,0,0)
+
         # self.surface  = pygame.Surface(dimensions)
-        self.surface.fill((0,0,0))
+        self.surface.fill(self.bg_colour)
 
     
 
@@ -34,41 +42,86 @@ class PlayBar(Component):
         self.frame_count = frame_count 
 
         self.current_frame_index = 0
-        #formatting
-        self.element_pauseplay = Element("pauseplay",
-                                        order=(0,1),
-                                        width=AspectMultiplier(1),
-                                        height=Percentage(0.4)
-                                    )
         
+        ## formatting
+
+        self.element_pauseplay = Element(
+            "pauseplay",
+            order=(0,1),
+            width=AspectMultiplier(1),
+            height=Percentage(0.4),
+        )
+
         self.element_progress_bar = Element(
-                                    "progress_bar",
-                                    order=(1,1),
-                                    width=Percentage(0.8),
-                                    height=Percentage(0.4),
-                                )
-        
-        self.formatter = Formatter(parent_dimensions=dimensions,
-                                   rows=[
-                                        Percentage(0.2,relative_to_container=False),
-                                        Percentage(0.6,relative_to_container=False)
-                                    ],
-                                   columns=[
-                                       Percentage(0.1,relative_to_container=False),
-                                       Percentage(0.9,relative_to_container=False)
-                                   ],
-                                   elements=[
-                                       self.element_pauseplay,
-                                       self.element_progress_bar,
-                                    ]
-                                )
+            "progress_bar",
+            order=(2,1),
+            width=Percentage(1),
+            height=Percentage(0.4),
+        )
 
 
+        self.formatter = Formatter(
+            parent_dimensions=dimensions,
+            rows=[
+                Percentage(0.2,relative_to_container=False),
+                Percentage(0.8,relative_to_container=False),
+            ],
+            columns=[
+                Percentage(0.05,relative_to_container=False),
+                Percentage(0.05,relative_to_container=False),
+                Percentage(0.85,relative_to_container=False),
+            ],
+            elements=[
+                self.element_pauseplay,
+                self.element_progress_bar,
+            ]
+        )
+
+        ## timestamp
+
+        #timestamp element is defined after formatter initialisation, because the height of the element (the font size) is dependant on the height of the row
+        #which is calculated within formatter init
+    
+        if not pygame.font.get_init(): #initiliase pygame font module if not already initiliased.
+            pygame.font.init()
+
+        _timestamp_order = (2,0) #column 1, row 0
+
+        timestamp_row_height = self.formatter.get_row_height(_timestamp_order[1])
+
+        timestamp_font_size = round(timestamp_row_height * 0.6)
+
+        timestamp_font = pygame.font.Font("fonts\\arial.ttf",timestamp_font_size)
+
+        timestamp_text = self.milliseconds_to_timestamp(self.get_video_length())
+        timestamp_text_colour = (255,255,255)
+
+        self.surface_timestamp = timestamp_font.render(timestamp_text,True,timestamp_text_colour,self.bg_colour)
+
+        timestamp_width,timestamp_height = self.surface_timestamp.get_rect()[:2]
+
+
+        self.element_timestamp = Element(
+            "timestamp",
+            order=_timestamp_order,
+            width=timestamp_width,
+            height=timestamp_height,
+            margin={
+                "bottom":Percentage(0),
+                "left":Percentage(0)
+            },
+        )
+
+        self.formatter.add_element(self.element_timestamp)
+
+
+        #pauseplay button
         pauseplay_pos = self.formatter.get_position("pauseplay")
         pauseplay_dim = self.formatter.get_dimensions("pauseplay")
-        
         self.component_pauseplay_button = PausePlayButton(pauseplay_dim,pauseplay_pos,parent=self)
-        
+
+
+        #progress bar
         progress_bar_rect_pos = self.formatter.get_position("progress_bar")
         progress_bar_rect_dim = self.formatter.get_dimensions("progress_bar")
         self.rect_progress_bar = pygame.Rect(*progress_bar_rect_pos,1,progress_bar_rect_dim[1])
@@ -99,13 +152,19 @@ class PlayBar(Component):
 
     #draw rects 
     def draw(self):
-        self.surface.fill((0,0,0))
+        self.surface.fill(self.bg_colour)
+        
+        #pauseplay button
         self.surface.blit(self.component_pauseplay_button.surface,self.component_pauseplay_button.get_position())
+        
+        #timestamp
+        self.surface.blit(self.surface_timestamp,self.formatter.get_position("timestamp"))
 
+
+        #progress bar
         pygame.draw.rect(self.surface,(255,255,255),self.rect_progress_container)
         pygame.draw.rect(self.surface,(110,150,200),self.rect_progress_bar)
         pygame.draw.rect(self.surface,(200,200,200),self.rect_progress_container,width=self._get_outline_width())
-
 
 
 
@@ -117,11 +176,13 @@ class PlayBar(Component):
         self.surface.fill((0,255,0))
 
         self.formatter.resize_parent(width=width,height=height)
-
+        
+        #draw pauseplay
         pauseplay_rect_pos = self.formatter.get_position("pauseplay")
         pauseplay_rect_dim = self.formatter.get_dimensions("pauseplay")
         self.rect_pauseplay = pygame.Rect(*pauseplay_rect_pos,*pauseplay_rect_dim)
 
+        #draw progress bar rect
         progress_bar_rect_pos = self.formatter.get_position("progress_bar")
         progress_bar_rect_dim = self.formatter.get_dimensions("progress_bar")
         self.rect_progress_bar = pygame.Rect(*progress_bar_rect_pos,*progress_bar_rect_dim)
@@ -265,7 +326,7 @@ class PlayBar(Component):
         return frame_indx * frame_duration
     
     #convert seconds to timestamp
-    def seconds_to_timestmap(self,milliseconds:float):
+    def milliseconds_to_timestamp(self,milliseconds:int):
         hr = 60 * 60 * 1000
         mint = 60 * 1000
         sec = 1000
