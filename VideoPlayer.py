@@ -11,7 +11,8 @@ class VideoPlayer(Component):
         dimensions:Coordinate, # the display dimensions we are working with
         position:Coordinate,
         video:cv2.VideoCapture,
-        show_crop_overlay:bool,
+        crop_aspect_ratio: float | None = None,
+        show_crop_overlay:bool = True,
         bg_colour = (0,0,0),
         parent:None | Component = None,
     ):
@@ -30,7 +31,6 @@ class VideoPlayer(Component):
 
         v_height = self.video.get(cv2.CAP_PROP_FRAME_HEIGHT)
         v_width = self.video.get(cv2.CAP_PROP_FRAME_WIDTH)
-
         self.aspect_ratio = v_width / v_height
 
         frame_dimensions = self._gen_frame_dimensions_maintaining_aspect_ratio_to_fit_surface()
@@ -46,12 +46,12 @@ class VideoPlayer(Component):
             dimensions=self.frame.get_dimensions(),
             position=(0,0),
             parent=self.frame,
-
-            initial_selection_dimensions=(90,160),
+            video_dimensions=(v_width,v_height),
+            initial_selection_dimensions=None,
             handle_width=2,
-            max_selection=(2000,2000),
-            min_selection=(90,160),
-            aspect_ratio=self.aspect_ratio,
+            max_selection=None,
+            min_selection=None,
+            aspect_ratio=crop_aspect_ratio,
             bg_alpha=128,
         )
 
@@ -145,17 +145,7 @@ class VideoPlayer(Component):
         selection = self.component_crop_overlay.get_selection()
 
 
-        height_multi = self.video.get(cv2.CAP_PROP_FRAME_HEIGHT) / self.component_crop_overlay.surface.get_height()
-        width_multi = self.video.get(cv2.CAP_PROP_FRAME_WIDTH) / self.component_crop_overlay.surface.get_width()
-
-        #adjust selection (given in window size dimensions) to be relative to real frame size (account for window resize)
-        x1 = round(selection[0][0] * width_multi)
-        x2 = round(selection[0][1] * width_multi)
-
-        h1 = round(selection[1][0] * height_multi)
-        h2 = round(selection[1][1] * height_multi)
-
-        return ((x1,x2),(h1,h2))
+        return selection
 
 
 

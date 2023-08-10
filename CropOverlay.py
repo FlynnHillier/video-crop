@@ -11,10 +11,11 @@ class CropOverlay(Component):
     def __init__(self,
         dimensions:tuple[int,int],
         position:tuple[int,int],
-        initial_selection_dimensions:tuple[int,int],
         handle_width:int,
-        max_selection:tuple[int,int], #max selection rect x y area
-        min_selection:tuple[int,int],
+        video_dimensions:tuple[int,int],
+        initial_selection_dimensions:tuple[int,int] | None = None,
+        max_selection:tuple[int,int] | None = None, #max selection rect x y area
+        min_selection:tuple[int,int] | None = None,
         aspect_ratio:float | None = None, #if aspect ratio is passed, ensure initial dimensions are within said aspect ratio
         bg_alpha:int = 128, #how dark the not selected area of the video should be, 0-255
         parent: Component | None = None
@@ -27,8 +28,46 @@ class CropOverlay(Component):
             surface_args=[pygame.SRCALPHA,32] #transparent surface
         )
         
+        self.video_dimensions = video_dimensions
         self.aspect_ratio = aspect_ratio
+        ## maximum / minimum selection calculation
 
+        # MAX / MIN SELECTIONS ARE GIVEN AS RESOLUTIONS RELATIVE TO THE ACTUAL VIDEO AND ARE CONVERTED BY 
+        # 'video_dimension_to_surface_dimension' METHOD AT RUN TIME TO SURFACE DIMENSION
+
+        #max selection
+        if max_selection != None:
+            self.max_selection = max_selection
+        else:
+            #calculate max selection
+            if self.aspect_ratio != None:
+                #calculate max selection respecting aspect ratio
+                if self.aspect_ratio > 1:
+                    #prioritise maximising width
+                    max_width = video_dimensions[0]
+                    max_height = round(max_width * (1/self.aspect_ratio))
+                elif self.aspect_ratio <= 1:
+                    #prioritise maximising height
+                    max_height = video_dimensions[1]
+                    max_width =  round(max_height * (self.aspect_ratio))
+                
+                self.max_selection = (max_width,max_height)
+            else:
+                #default to maximum selection being whole video
+                self.max_selection = video_dimensions
+
+        #min selection
+        if min_selection != None:
+            self.min_selection = min_selection
+        else:
+            self.min_selection = (0,0)
+
+        #assign initial selection if not specified
+        if initial_selection_dimensions == None:
+            initial_selection_dimensions = self.max_selection    
+    
+        
+        ## display 
         self.bg_alpha = bg_alpha
 
         self.handle_width = handle_width
@@ -36,11 +75,9 @@ class CropOverlay(Component):
         bg_w = dimensions[0]
         bg_h = dimensions[1]
 
-        self.max_selection = max_selection
-        self.min_selection = min_selection
+        initial_selection_dimensions = self.video_dimension_to_surface_dimension(initial_selection_dimensions)
 
-        #build area selection rectangle
-        
+        ## build area selection rectangle
         initial_rect_handle_w = initial_selection_dimensions[0]
         initial_rect_handle_h = initial_selection_dimensions[1]
 
@@ -73,11 +110,38 @@ class CropOverlay(Component):
 
     ### GETTERS ###
 
+    #returns selection (given as selection relative to actual video size)
     def get_selection(self):
-        return ( (self.body_rect.left , self.body_rect.left + self.body_rect.w) , (self.body_rect.top , self.body_rect.top + self.body_rect.h))
+        surface_relative_selection = (self.body_rect.left , self.body_rect.left + self.body_rect.w) , (self.body_rect.top , self.body_rect.top + self.body_rect.h)
+
+        height_multi = self.video_dimensions[1] / self.get_dimensions()[1]
+        width_multi = self.video_dimensions[0] / self.get_dimensions()[0]
+
+        #adjust selection (given in window size dimensions) to be relative to real frame size (account for window resize)
+        x1 = round(surface_relative_selection[0][0] * width_multi)
+        x2 = round(surface_relative_selection[0][1] * width_multi)
+
+        h1 = round(surface_relative_selection[1][0] * height_multi)
+        h2 = round(surface_relative_selection[1][1] * height_multi)
+
+        return ((x1,x2),(h1,h2))
+
+    
 
 
     ### UTILITY ###
+
+    #returns new dimension which resizes dimensions relative to actual video size, to a new dimension that is relative to the display surface dimensions
+    def video_dimension_to_surface_dimension(self,dimensions:tuple[int,int]) -> tuple[int,int]:
+        #dimensions as a percentage of current display dimensions 
+        w_percentage = self.get_dimensions()[0] / self.video_dimensions[0]
+        h_percentage = self.get_dimensions()[1] / self.video_dimensions[1]
+
+        width = dimensions[0] * w_percentage
+        height = dimensions[1] * h_percentage
+
+        return (width,height)
+
     
     #generate the position the rectangle should be placed at, factoring in the initial offset, based on the passed pos (typically passed pos will be mouse_pos)
     def _generate_pos_factoring_drag_offset(self,surface_pos:tuple[int,int]) -> tuple[int,int]:        
@@ -258,11 +322,14 @@ class CropOverlay(Component):
             change_y = event.rel[1] if is_top_side_select else event.rel[1] * -1
 
             
-            min_w = self.min_selection[0]
-            max_w = self.max_selection[0]
+            max_selection = self.video_dimension_to_surface_dimension(self.max_selection)
+            min_selection = self.video_dimension_to_surface_dimension(self.min_selection)
 
-            min_h = self.min_selection[1]
-            max_h = self.max_selection[1]
+            min_w = min_selection[0]
+            max_w = max_selection[0]
+
+            min_h = min_selection[1]
+            max_h = max_selection[1]
             #inflate by scale factor 2 of change to ensure border of rectangle tracks mouse.
             w = self.handle_rect.w
             h = self.handle_rect.h

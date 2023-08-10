@@ -14,7 +14,8 @@ class VideoCrop:
                  out_file_path="out.mp4",
                  quit_on_crop=True,
                  bg_colour:tuple[int,int,int]=(100,100,120),
-                 start_dimensions:tuple[int,int] = (600,800),
+                 start_dimensions:tuple[int,int] = (1200,800),
+                 crop_aspect_ratio:float | None = None,
         ) -> None:
         self.video = cv2.VideoCapture(fp)
 
@@ -48,7 +49,8 @@ class VideoCrop:
             position=self.gen_position_video_surface(),
             video=self.video,
             show_crop_overlay=True,
-            bg_colour=bg_colour
+            bg_colour=bg_colour,
+            crop_aspect_ratio=crop_aspect_ratio
         )
 
 
